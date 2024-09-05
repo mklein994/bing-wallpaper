@@ -121,6 +121,43 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                     anyhow::bail!("No current image set");
                 }
             }
+
+            Cmd::Reset {
+                images,
+                state,
+                dry_run,
+            } => {
+                if images {
+                    let dir = config.project.data_dir;
+                    if dry_run {
+                        let count = if dir.try_exists()? {
+                            Some(dir.read_dir()?.count())
+                        } else {
+                            None
+                        };
+
+                        let count_str = match count {
+                            Some(1) => " (1 image)",
+                            Some(x) => &format!(" ({x} images)"),
+                            None => "",
+                        };
+                        eprintln!("[DRY RUN]: Removing {:?}{count_str}...", dir.display());
+                    } else {
+                        std::fs::remove_dir_all(dir)?;
+                    }
+                }
+
+                if state {
+                    if dry_run {
+                        eprintln!(
+                            "[DRY RUN]: Removing {:?}...",
+                            config.project.state_file_path.parent().unwrap().display()
+                        );
+                    } else {
+                        std::fs::remove_dir_all(config.project.state_file_path.parent().unwrap())?;
+                    }
+                }
+            }
         }
     } else {
         let mut state = get_local_state(&config)?;

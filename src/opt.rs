@@ -62,6 +62,19 @@ pub enum Cmd {
         #[arg(long)]
         frozen: bool,
     },
+
+    Reset {
+        /// Remove downloaded images
+        #[arg(long)]
+        images: bool,
+
+        /// Reset local state
+        #[arg(long)]
+        state: bool,
+
+        #[arg(short = 'n', long, visible_alias = "pretend")]
+        dry_run: bool,
+    },
 }
 
 #[derive(Debug, ValueEnum, Clone, Copy)]

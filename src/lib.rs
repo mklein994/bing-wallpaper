@@ -2,13 +2,13 @@ pub mod config;
 mod jiff_serde;
 pub mod opt;
 
-use rand::prelude::*;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
 
 use anyhow::anyhow;
 use jiff::Zoned;
+use rand::prelude::*;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;

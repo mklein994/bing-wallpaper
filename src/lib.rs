@@ -31,17 +31,28 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 let url = config.to_url();
                 if print {
                     println!("{url}");
-                } else if raw {
-                    let json = reqwest::get(url).await?.json::<serde_json::Value>().await?;
-                    print_json(&json)?;
                 } else {
-                    let json = reqwest::get(url).await?.json::<ImageData>().await?;
-                    print_json(&json)?;
+                    macro_rules! fetch_and_format_json {
+                        ($kind:ty) => {{
+                            let value = reqwest::get(url).await?.json::<$kind>().await?;
+                            Ok::<String, anyhow::Error>(serde_json::to_string_pretty(&value)?)
+                        }};
+                    }
+
+                    let contents = if raw {
+                        fetch_and_format_json!(serde_json::Value)?
+                    } else {
+                        fetch_and_format_json!(ImageData)?
+                    };
+
+                    println!("{contents}");
                 }
             }
 
             Cmd::ProjectDirs => {
-                print_json(&config.project)?;
+                let value = &config.project;
+                let contents = serde_json::to_string_pretty(&value)?;
+                println!("{contents}");
             }
 
             Cmd::ListImages { ref format, all } => {
@@ -194,13 +205,6 @@ async fn download_image(config: &Config, client: &Client, image: &Image) -> anyh
         file.write_all(&contents)?;
     }
 
-    Ok(())
-}
-
-/// Simple helper function to pretty-print a value as JSON to stdout
-fn print_json(value: impl serde::Serialize) -> anyhow::Result<()> {
-    let contents = serde_json::to_string_pretty(&value)?;
-    println!("{contents}");
     Ok(())
 }
 

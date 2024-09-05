@@ -22,11 +22,8 @@ pub struct Opt {
 
 #[derive(Debug, Subcommand)]
 pub enum Cmd {
-    /// Print the file path to a random image
-    ///
-    /// This grabs from images already downloaded, and guarantees it won't be the same as the
-    /// current image.
-    Random,
+    /// Update metadata from the Internet, downloading images if necessary
+    Update,
 
     /// Make an HTTP call to the metadata URL
     Metadata {

@@ -55,36 +55,36 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 }
             }
 
-            Cmd::Random => {
+            Cmd::Update => {
+                ensure_project_dirs_exist(&config.project)?;
+
                 let mut state = get_local_state(&config)?;
-                let image = update_random_image(&config, &mut state)?;
-                println!("{}", image.file_name(&config).display());
+
+                let client = Client::new();
+
+                let new_state = get_new_state(&config, &client).await?;
+
+                for image in new_state.images {
+                    let image_path = config.project.data_dir.join(image.file_name(&config));
+                    if !image_path.try_exists()? {
+                        download_image(&config, &client, &image).await?;
+                    }
+
+                    if !state.image_data.images.contains(&image) {
+                        state.image_data.add_image(image);
+                    }
+                }
+
+                let _ = update_random_image(&config, &mut state)?;
+
+                let contents = serde_json::to_string_pretty(&state)?;
+                std::fs::write(&config.project.state_file_path, contents)?;
             }
         }
     } else {
-        ensure_project_dirs_exist(&config.project)?;
-
         let mut state = get_local_state(&config)?;
-
-        let client = Client::new();
-
-        let new_state = get_new_state(&config, &client).await?;
-
-        for image in new_state.images {
-            let image_path = config.project.data_dir.join(image.file_name(&config));
-            if !image_path.try_exists()? {
-                download_image(&config, &client, &image).await?;
-            }
-
-            if !state.image_data.images.contains(&image) {
-                state.image_data.add_image(image);
-            }
-        }
-
-        let _ = update_random_image(&config, &mut state)?;
-
-        let contents = serde_json::to_string_pretty(&state)?;
-        std::fs::write(&config.project.state_file_path, contents)?;
+        let image = update_random_image(&config, &mut state)?;
+        println!("{}", image.file_name(&config).display());
     };
 
     Ok(())

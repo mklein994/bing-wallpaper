@@ -4,14 +4,15 @@ pub mod opt;
 
 use std::collections::BTreeSet;
 
+use anyhow::anyhow;
 use jiff::Zoned;
 use serde::{Deserialize, Serialize};
 
 pub use config::Config;
+use config::Project;
 #[cfg(doc)]
 pub use config::RawConfig;
 use opt::Cmd;
-
 pub use opt::Opt;
 
 pub async fn run(opt: Opt) -> anyhow::Result<()> {
@@ -37,6 +38,7 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
             }
         }
     } else {
+        ensure_project_dirs_exist(&config.project)?;
         todo!()
     };
 
@@ -47,6 +49,23 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
 fn print_json(value: impl serde::Serialize) -> anyhow::Result<()> {
     let contents = serde_json::to_string_pretty(&value)?;
     println!("{contents}");
+    Ok(())
+}
+
+fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
+    if !project.data_dir.try_exists()? {
+        std::fs::create_dir(&project.data_dir)?;
+    }
+
+    if !project.state_file_path.try_exists()? {
+        std::fs::create_dir(
+            project
+                .state_file_path
+                .parent()
+                .ok_or_else(|| anyhow!("The state file path is not inside a directory"))?,
+        )?;
+    }
+
     Ok(())
 }
 
@@ -77,4 +96,30 @@ struct Image {
 
     #[serde(rename = "copyrightlink")]
     copyright_link: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn ensure_test_project_dirs_exist() {
+        ensure_project_dirs_exist(&get_test_project()).unwrap();
+    }
+
+    pub fn get_test_project() -> Project {
+        let test_base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/local"));
+        Project::new(
+            test_base
+                .join("config")
+                .join(env!("CARGO_CRATE_NAME"))
+                .join("config.json"),
+            test_base.join("share").join(env!("CARGO_CRATE_NAME")),
+            test_base
+                .join("state")
+                .join(env!("CARGO_CRATE_NAME"))
+                .join("image_index.json"),
+        )
+    }
 }

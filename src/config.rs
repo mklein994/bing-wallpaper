@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use url::Url;
 
 use crate::Opt;
@@ -94,8 +94,8 @@ pub struct RawConfig {
 #[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub struct Project {
     config_file_path: PathBuf,
-    data_dir: PathBuf,
-    state_dir: PathBuf,
+    pub data_dir: PathBuf,
+    pub state_file_path: PathBuf,
 }
 
 impl Project {
@@ -106,11 +106,21 @@ impl Project {
         Ok(Self {
             config_file_path: project_dirs.config_dir().join("config.json").clone(),
             data_dir: project_dirs.data_dir().to_path_buf(),
-            state_dir: project_dirs
+            state_file_path: project_dirs
                 .state_dir()
-                .map(Path::to_path_buf)
+                .map(|x| x.join("image_index.json"))
                 .ok_or_else(|| anyhow!("Failed to detect project state directory"))?,
         })
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub fn new(config_file_path: PathBuf, data_dir: PathBuf, state_file_path: PathBuf) -> Self {
+        Self {
+            config_file_path,
+            data_dir,
+            state_file_path,
+        }
     }
 }
 
@@ -119,6 +129,7 @@ mod tests {
     use clap::Parser;
 
     use super::*;
+    use crate::tests::get_test_project;
 
     #[test]
     fn with_sample_config() {
@@ -164,17 +175,5 @@ mod tests {
             "https://www.bing.com/HPImageArchive.aspx?format=js&n=1&idx=1&mkt=en-CA",
             actual.to_url().as_str(),
         );
-    }
-
-    fn get_test_project() -> Project {
-        let test_base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/local"));
-        Project {
-            config_file_path: test_base
-                .join("config")
-                .join(env!("CARGO_CRATE_NAME"))
-                .join("config.json"),
-            data_dir: test_base.join("share").join(env!("CARGO_CRATE_NAME")),
-            state_dir: test_base.join("state").join(env!("CARGO_CRATE_NAME")),
-        }
     }
 }

@@ -47,6 +47,7 @@ pub enum Cmd {
     /// Note that this takes other CLI flags into account.
     ProjectDirs,
 
+    #[command(visible_alias = "list")]
     ListImages {
         /// Which columns to print
         #[arg(short, long, value_enum, value_delimiter = ',', num_args(1..), conflicts_with = "all")]

@@ -48,9 +48,10 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 let state = get_local_state(&config)?;
                 for image in state.image_data.images {
                     println!(
-                        "{}\t{}",
+                        "{}\t{}\t{}",
                         image.file_name(&config).display(),
                         image.to_url(&config),
+                        image.full_start_date,
                     );
                 }
             }
@@ -74,6 +75,7 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                     }
 
                     if !state.image_data.images.contains(&image) {
+                        eprintln!("adding image {:?}...", image.title);
                         state.image_data.add_image(image);
                     }
                 }
@@ -154,24 +156,22 @@ fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<
         );
     }
 
-    let image_path = state
+    let images = state
         .image_data
         .images
         .iter()
-        .filter_map(|x| {
-            let file_name = x.file_name(config);
+        .filter(|x| {
             if let Some(current) = &state.current_image {
-                if file_name == *current {
-                    None
-                } else {
-                    Some(file_name)
-                }
+                x.file_name(config) != *current
             } else {
-                Some(file_name)
+                true
             }
         })
-        .choose(&mut rng)
-        .unwrap();
+        .collect::<Vec<_>>();
+
+    let image_path = images
+        .choose_weighted(&mut rng, |x| x.full_start_date.timestamp().as_second())?
+        .file_name(config);
 
     state.current_image = Some(image_path.clone());
     state.save(config)?;

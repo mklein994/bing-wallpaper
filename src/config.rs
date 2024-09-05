@@ -11,18 +11,18 @@ const URL_BASE: &str = "https://www.bing.com";
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     params: UrlParams,
-    project: Project,
+    pub project: Project,
 }
 
 impl Config {
     /// Merge the config with options passed on the command line
-    pub fn initialize(opt: Opt) -> anyhow::Result<Self> {
+    pub fn initialize(opt: &Opt) -> anyhow::Result<Self> {
         let project = Project::initialize()?;
         Self::initialize_with_project(opt, project)
     }
 
     /// Merge the config with options, using a custom project config
-    fn initialize_with_project(opt: Opt, project: Project) -> anyhow::Result<Self> {
+    fn initialize_with_project(opt: &Opt, project: Project) -> anyhow::Result<Self> {
         let raw_config = if let Some(config_path) = opt.config_path.as_ref().or_else(|| {
             let default_config_path = &project.config_file_path;
             if let Ok(true) = default_config_path.try_exists() {
@@ -41,7 +41,7 @@ impl Config {
             params: UrlParams {
                 number: opt.number.or(raw_config.number).unwrap_or(8),
                 index: opt.index.or(raw_config.index),
-                market: opt.market.or(raw_config.market),
+                market: opt.market.as_ref().or(raw_config.market.as_ref()).cloned(),
             },
             project,
         })
@@ -62,6 +62,7 @@ pub struct UrlParams {
 }
 
 impl UrlParams {
+    #[must_use]
     pub fn to_url(&self) -> Url {
         Url::parse_with_params(&format!("{URL_BASE}/HPImageArchive.aspx"), self.params()).unwrap()
     }
@@ -90,8 +91,8 @@ pub struct RawConfig {
     pub market: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Project {
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
+pub struct Project {
     config_file_path: PathBuf,
     data_dir: PathBuf,
     state_dir: PathBuf,
@@ -131,7 +132,7 @@ mod tests {
             project: project.clone(),
         };
 
-        let actual = Config::initialize_with_project(Opt::parse_from([""]), project).unwrap();
+        let actual = Config::initialize_with_project(&Opt::parse_from([""]), project).unwrap();
 
         assert_eq!(expected, actual);
         assert_eq!(
@@ -153,7 +154,7 @@ mod tests {
         };
 
         let actual = Config::initialize_with_project(
-            Opt::parse_from(vec!["", "--number", "1", "--index", "1"]),
+            &Opt::parse_from(vec!["", "--number", "1", "--index", "1"]),
             project,
         )
         .unwrap();

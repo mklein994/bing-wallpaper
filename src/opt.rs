@@ -37,4 +37,6 @@ pub enum Cmd {
     ///
     /// Note that this takes other CLI flags into account.
     ProjectDirs,
+
+    ListImages,
 }

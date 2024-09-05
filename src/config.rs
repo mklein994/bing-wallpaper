@@ -6,12 +6,12 @@ use url::Url;
 
 use crate::Opt;
 
-const URL_BASE: &str = "https://www.bing.com";
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     params: UrlParams,
     pub project: Project,
+    pub size: String,
+    pub ext: String,
 }
 
 impl Config {
@@ -34,7 +34,7 @@ impl Config {
             let contents = std::fs::read_to_string(config_path)?;
             serde_json::from_str(&contents)?
         } else {
-            RawConfig::default()
+            Raw::default()
         };
 
         Ok(Self {
@@ -44,6 +44,8 @@ impl Config {
                 market: opt.market.as_ref().or(raw_config.market.as_ref()).cloned(),
             },
             project,
+            size: raw_config.size.unwrap_or_else(|| "UHD".to_string()),
+            ext: raw_config.ext.unwrap_or_else(|| "jpg".to_string())
         })
     }
 
@@ -64,7 +66,11 @@ pub struct UrlParams {
 impl UrlParams {
     #[must_use]
     pub fn to_url(&self) -> Url {
-        Url::parse_with_params(&format!("{URL_BASE}/HPImageArchive.aspx"), self.params()).unwrap()
+        Url::parse_with_params(
+            &format!("{}/HPImageArchive.aspx", crate::URL_BASE),
+            self.params(),
+        )
+        .unwrap()
     }
 
     fn params(&self) -> impl Iterator<Item = (&'static str, String)> {
@@ -85,10 +91,12 @@ impl UrlParams {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub struct RawConfig {
+pub struct Raw {
     pub number: Option<u8>,
     pub index: Option<u8>,
     pub market: Option<String>,
+    pub size: Option<String>,
+    pub ext: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq, Clone)]
@@ -141,6 +149,8 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
+            size: "UHD".to_string(),
+            ext: "jpg".to_string(),
         };
 
         let actual = Config::initialize_with_project(&Opt::parse_from([""]), project).unwrap();
@@ -162,6 +172,8 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
+            size: "UHD".to_string(),
+            ext: "jpg".to_string(),
         };
 
         let actual = Config::initialize_with_project(

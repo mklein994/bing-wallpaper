@@ -40,3 +40,14 @@ pub enum Cmd {
 
     ListImages,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn check_arg_sanity() {
+        Opt::command().debug_assert();
+    }
+}

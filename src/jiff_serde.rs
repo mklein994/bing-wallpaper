@@ -1,5 +1,4 @@
 pub mod datetime {
-
     use jiff::{civil::DateTime, tz::TimeZone, Zoned};
     use serde::{de, ser};
 
@@ -18,13 +17,6 @@ pub mod datetime {
             formatter.write_str(&format!("a string formatted as {FORMAT}"))
         }
 
-        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            self.visit_str(&v)
-        }
-
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
@@ -33,11 +25,17 @@ pub mod datetime {
                 .and_then(|x| x.to_zoned(TimeZone::system()))
                 .map_err(de::Error::custom)
         }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            self.visit_str(&v)
+        }
     }
 
     pub fn serialize<S: ser::Serializer>(value: &Zoned, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer
-            .serialize_str(&jiff::fmt::strtime::format(FORMAT, value).map_err(ser::Error::custom)?)
+        super::serialize(value, serializer, FORMAT)
     }
 }
 
@@ -60,13 +58,6 @@ pub mod date {
             formatter.write_str(&format!("a string formatted as {FORMAT}"))
         }
 
-        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            self.visit_str(&v)
-        }
-
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
@@ -75,10 +66,26 @@ pub mod date {
                 .and_then(|x| x.to_zoned(TimeZone::system()))
                 .map_err(de::Error::custom)
         }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            self.visit_str(&v)
+        }
     }
 
     pub fn serialize<S: ser::Serializer>(value: &Zoned, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer
-            .serialize_str(&jiff::fmt::strtime::format(FORMAT, value).map_err(ser::Error::custom)?)
+        super::serialize(value, serializer, FORMAT)
     }
+}
+
+fn serialize<S: serde::Serializer>(
+    value: &jiff::Zoned,
+    serializer: S,
+    format: &'static str,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(
+        &jiff::fmt::strtime::format(format, value).map_err(serde::ser::Error::custom)?,
+    )
 }

@@ -41,7 +41,12 @@ impl Config {
             params: UrlParams {
                 number: opt.number.or(raw_config.number).unwrap_or(8),
                 index: opt.index.or(raw_config.index),
-                market: opt.market.clone().or(raw_config.market.clone()),
+                market: opt
+                    .market
+                    .as_deref()
+                    .or(raw_config.market.as_deref())
+                    .filter(|x| !x.is_empty())
+                    .map(std::string::ToString::to_string),
             },
             project,
             size: opt

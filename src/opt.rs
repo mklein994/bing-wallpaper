@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use std::path::PathBuf;
 
@@ -47,12 +47,42 @@ pub enum Cmd {
     /// Note that this takes other CLI flags into account.
     ProjectDirs,
 
-    ListImages,
+    ListImages {
+        /// Which columns to print
+        #[arg(short, long, value_enum, value_delimiter = ',', num_args(1..), conflicts_with = "all")]
+        format: Vec<ImagePart>,
+
+        /// Print all columns (default if -f is not passed)
+        #[arg(long)]
+        all: bool,
+    },
 
     ShowCurrent {
         #[arg(long)]
         frozen: bool,
     },
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy)]
+pub enum ImagePart {
+    Path,
+    FullPath,
+    Title,
+    Url,
+    Time,
+}
+
+impl ImagePart {
+    #[must_use]
+    pub fn all() -> Vec<Self> {
+        vec![
+            Self::Time,
+            Self::FullPath,
+            Self::Path,
+            Self::Title,
+            Self::Url,
+        ]
+    }
 }
 
 #[cfg(test)]

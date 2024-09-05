@@ -17,8 +17,8 @@ pub use config::Config;
 use config::Project;
 #[cfg(doc)]
 pub use config::Raw as RawConfig;
-use opt::Cmd;
 pub use opt::Opt;
+use opt::{Cmd, ImagePart};
 
 const URL_BASE: &str = "https://www.bing.com";
 
@@ -44,15 +44,34 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 print_json(&config.project)?;
             }
 
-            Cmd::ListImages => {
+            Cmd::ListImages { ref format, all } => {
                 let state = get_local_state(&config)?;
+                if state.image_data.images.is_empty() {
+                    anyhow::bail!("No images found. Try running with the \"update\" subcommand.");
+                }
+
                 for image in state.image_data.images {
-                    println!(
-                        "{}\t{}\t{}",
-                        image.file_name(&config).display(),
-                        image.to_url(&config),
-                        image.full_start_date,
-                    );
+                    let mut line: Vec<String> = vec![];
+                    let order = if all || format.is_empty() {
+                        &ImagePart::all()
+                    } else {
+                        format
+                    };
+                    for item in order {
+                        match item {
+                            ImagePart::Path => {
+                                line.push(image.file_name(&config).display().to_string());
+                            }
+                            ImagePart::FullPath => {
+                                line.push(image.absolute_file_name(&config).display().to_string());
+                            }
+                            ImagePart::Title => line.push(image.title.clone()),
+                            ImagePart::Url => line.push(image.to_url(&config).to_string()),
+                            ImagePart::Time => line.push(image.full_start_date.to_string()),
+                        }
+                    }
+
+                    println!("{}", line.join("\t"));
                 }
             }
 

@@ -85,6 +85,23 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 let contents = serde_json::to_string_pretty(&state)?;
                 std::fs::write(&config.project.state_file_path, contents)?;
             }
+
+            Cmd::ShowCurrent { frozen } => {
+                let mut state = get_local_state(&config)?;
+                let image_path = if let Some(image) = state.current_image {
+                    Some(image)
+                } else if !frozen {
+                    Some(update_random_image(&config, &mut state)?)
+                } else {
+                    None
+                };
+
+                if let Some(path) = image_path {
+                    println!("{}", config.project.data_dir.join(path).display());
+                } else {
+                    anyhow::bail!("No current image set");
+                }
+            }
         }
     } else {
         let mut state = get_local_state(&config)?;

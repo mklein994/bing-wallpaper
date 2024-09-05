@@ -48,6 +48,11 @@ pub enum Cmd {
     ProjectDirs,
 
     ListImages,
+
+    ShowCurrent {
+        #[arg(long)]
+        frozen: bool,
+    },
 }
 
 #[cfg(test)]

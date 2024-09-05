@@ -45,7 +45,7 @@ impl Config {
             },
             project,
             size: raw_config.size.unwrap_or_else(|| "UHD".to_string()),
-            ext: raw_config.ext.unwrap_or_else(|| "jpg".to_string())
+            ext: raw_config.ext.unwrap_or_else(|| "jpg".to_string()),
         })
     }
 

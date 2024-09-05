@@ -2,6 +2,7 @@ pub mod config;
 mod jiff_serde;
 pub mod opt;
 
+use rand::prelude::*;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
@@ -45,13 +46,19 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
 
             Cmd::ListImages => {
                 let state = get_local_state(&config)?;
-                for image in state.images {
+                for image in state.image_data.images {
                     println!(
                         "{}\t{}",
                         image.file_name(&config).display(),
                         image.to_url(&config),
                     );
                 }
+            }
+
+            Cmd::Random => {
+                let mut state = get_local_state(&config)?;
+                let image = update_random_image(&config, &mut state)?;
+                println!("{}", image.file_name(&config).display());
             }
         }
     } else {
@@ -69,10 +76,12 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 download_image(&config, &client, &image).await?;
             }
 
-            if !state.images.contains(&image) {
-                state.add_image(image);
+            if !state.image_data.images.contains(&image) {
+                state.image_data.add_image(image);
             }
         }
+
+        let _ = update_random_image(&config, &mut state)?;
 
         let contents = serde_json::to_string_pretty(&state)?;
         std::fs::write(&config.project.state_file_path, contents)?;
@@ -81,13 +90,13 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get_local_state(config: &Config) -> anyhow::Result<ImageData> {
+fn get_local_state(config: &Config) -> anyhow::Result<AppState> {
     let path = &config.project.state_file_path;
     if path.exists() {
         let contents = std::fs::read_to_string(path)?;
         Ok(serde_json::from_str(&contents)?)
     } else {
-        Ok(ImageData::default())
+        Ok(AppState::default())
     }
 }
 
@@ -133,6 +142,52 @@ fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<Image> {
+    let mut rng = rand::thread_rng();
+
+    if state.image_data.images.is_empty() {
+        anyhow::bail!(
+            "Looks like you don't have any images. Try running this with no subcommands."
+        );
+    }
+
+    let image = state
+        .image_data
+        .images
+        .iter()
+        .filter(|x| {
+            if let Some(current) = &state.current_image_hash {
+                &x.hash != current
+            } else {
+                true
+            }
+        })
+        .choose(&mut rng)
+        .unwrap()
+        .clone();
+
+    state.current_image_hash = Some(image.hash.to_string());
+    state.save(config)?;
+
+    Ok(image)
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct AppState {
+    image_data: ImageData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current_image_hash: Option<String>,
+}
+
+impl AppState {
+    pub fn save(&self, config: &Config) -> anyhow::Result<()> {
+        let config_path = &config.project.state_file_path;
+        let contents = serde_json::to_string_pretty(self)?;
+        std::fs::write(config_path, contents)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct ImageData {
     images: BTreeSet<Image>,
@@ -144,7 +199,7 @@ impl ImageData {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 struct Image {
     #[serde(rename = "fullstartdate", with = "jiff_serde::datetime")]
     full_start_date: Zoned,

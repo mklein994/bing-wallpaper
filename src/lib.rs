@@ -65,7 +65,10 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 let new_state = get_new_state(&config, &client).await?;
 
                 for image in new_state.images {
-                    let image_path = config.project.data_dir.join(image.file_name(&config));
+                    let image_path = config
+                        .project
+                        .data_dir
+                        .join(image.absolute_file_name(&config));
                     if !image_path.try_exists()? {
                         download_image(&config, &client, &image).await?;
                     }
@@ -83,8 +86,8 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
         }
     } else {
         let mut state = get_local_state(&config)?;
-        let image = update_random_image(&config, &mut state)?;
-        println!("{}", image.file_name(&config).display());
+        let image_path = update_random_image(&config, &mut state)?;
+        println!("{}", config.project.data_dir.join(image_path).display());
     };
 
     Ok(())
@@ -106,7 +109,7 @@ async fn get_new_state(config: &Config, client: &Client) -> anyhow::Result<Image
 
 async fn download_image(config: &Config, client: &Client, image: &Image) -> anyhow::Result<()> {
     let url = image.to_url(config);
-    let file_name = image.file_name(config);
+    let file_name = image.absolute_file_name(config);
     let contents = client.get(url).send().await?.bytes().await?;
     if let Some(mut file) = match File::create_new(file_name) {
         Ok(file) => Ok(Some(file)),
@@ -142,7 +145,7 @@ fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<Image> {
+fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<PathBuf> {
     let mut rng = rand::thread_rng();
 
     if state.image_data.images.is_empty() {
@@ -151,32 +154,35 @@ fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<
         );
     }
 
-    let image = state
+    let image_path = state
         .image_data
         .images
         .iter()
-        .filter(|x| {
-            if let Some(current) = &state.current_image_hash {
-                &x.hash != current
+        .filter_map(|x| {
+            let file_name = x.file_name(config);
+            if let Some(current) = &state.current_image {
+                if file_name == *current {
+                    None
+                } else {
+                    Some(file_name)
+                }
             } else {
-                true
+                Some(file_name)
             }
         })
         .choose(&mut rng)
-        .unwrap()
-        .clone();
+        .unwrap();
 
-    state.current_image_hash = Some(image.hash.to_string());
+    state.current_image = Some(image_path.clone());
     state.save(config)?;
 
-    Ok(image)
+    Ok(image_path)
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct AppState {
     image_data: ImageData,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    current_image_hash: Option<String>,
+    current_image: Option<PathBuf>,
 }
 
 impl AppState {
@@ -232,12 +238,16 @@ impl Image {
         .unwrap()
     }
 
+    pub fn absolute_file_name(&self, config: &Config) -> PathBuf {
+        config.project.data_dir.join(self.file_name(config))
+    }
+
     pub fn file_name(&self, config: &Config) -> PathBuf {
         let url = self.to_url(config);
         url.query_pairs()
             .find_map(|(k, v)| {
                 if k == "id" {
-                    Some(config.project.data_dir.join(format!("{}_{v}", self.hash)))
+                    Some(PathBuf::from(format!("{}_{v}", self.hash)))
                 } else {
                     None
                 }

@@ -18,6 +18,12 @@ pub struct Opt {
 
     #[command(subcommand)]
     pub cmd: Option<Cmd>,
+
+    #[arg(long)]
+    pub size: Option<String>,
+
+    #[arg(long)]
+    pub ext: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]

@@ -41,11 +41,21 @@ impl Config {
             params: UrlParams {
                 number: opt.number.or(raw_config.number).unwrap_or(8),
                 index: opt.index.or(raw_config.index),
-                market: opt.market.as_ref().or(raw_config.market.as_ref()).cloned(),
+                market: opt.market.clone().or(raw_config.market.clone()),
             },
             project,
-            size: raw_config.size.unwrap_or_else(|| "UHD".to_string()),
-            ext: raw_config.ext.unwrap_or_else(|| "jpg".to_string()),
+            size: opt
+                .size
+                .as_deref()
+                .or(raw_config.size.as_deref())
+                .unwrap_or("UHD")
+                .to_string(),
+            ext: opt
+                .ext
+                .as_deref()
+                .or(raw_config.size.as_deref())
+                .unwrap_or("jpg")
+                .to_string(),
         })
     }
 
@@ -79,10 +89,7 @@ impl UrlParams {
             .chain(
                 vec![
                     ("idx", self.index.map(|x| x.to_string())),
-                    (
-                        "mkt",
-                        self.market.as_ref().map(std::string::ToString::to_string),
-                    ),
+                    ("mkt", self.market.clone()),
                 ]
                 .into_iter()
                 .filter_map(|(k, v)| v.map(|value| (k, value))),

@@ -161,10 +161,12 @@ fn update_random_image(state: &mut AppState, config: &Config) -> anyhow::Result<
                 true
             }
         })
+        .enumerate()
         .collect::<Vec<_>>();
 
     let image_path = images
-        .choose_weighted(&mut rng, |x| x.full_start_date.timestamp().as_second())?
+        .choose_weighted(&mut rng, |(index, _)| index + 1)
+        .map(|(_, image)| image)?
         .file_name(config);
 
     state.current_image = Some(image_path.clone());

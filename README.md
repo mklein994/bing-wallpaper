@@ -62,9 +62,9 @@ ExecStart=%h/.fehbg
 Refresh and enable them:
 
 ```console
-$ systemctl --user daemon-reload
-$ systemctl --user enable --now bing-wallpaper.timer
-$ systemctl --user enable --now feh-wallpaper.timer
+systemctl --user daemon-reload
+systemctl --user enable --now bing-wallpaper.timer
+systemctl --user enable --now feh-wallpaper.timer
 ```
 
 Customize these as you see fit.

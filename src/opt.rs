@@ -4,6 +4,7 @@ use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
+#[command(version)]
 pub struct Opt {
     #[arg(long, global = true, default_value = None)]
     pub config_path: Option<PathBuf>,

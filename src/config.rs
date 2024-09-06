@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
 
-use crate::Opt;
+use crate::{opt::Resolution, Opt};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     params: UrlParams,
     pub project: Project,
-    pub size: String,
+    pub size: Resolution,
     pub ext: String,
 }
 
@@ -49,16 +49,11 @@ impl Config {
                     .map(std::string::ToString::to_string),
             },
             project,
-            size: opt
-                .size
-                .as_deref()
-                .or(raw_config.size.as_deref())
-                .unwrap_or("UHD")
-                .to_string(),
+            size: opt.size.or(raw_config.size).unwrap_or_default(),
             ext: opt
                 .ext
                 .as_deref()
-                .or(raw_config.size.as_deref())
+                .or(raw_config.ext.as_deref())
                 .unwrap_or("jpg")
                 .to_string(),
         })
@@ -107,7 +102,7 @@ pub struct Raw {
     pub number: Option<u8>,
     pub index: Option<u8>,
     pub market: Option<String>,
-    pub size: Option<String>,
+    pub size: Option<Resolution>,
     pub ext: Option<String>,
 }
 
@@ -161,7 +156,7 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
-            size: "UHD".to_string(),
+            size: Resolution::Uhd,
             ext: "jpg".to_string(),
         };
 
@@ -184,7 +179,7 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
-            size: "UHD".to_string(),
+            size: Resolution::Uhd,
             ext: "jpg".to_string(),
         };
 

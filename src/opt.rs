@@ -21,8 +21,8 @@ pub struct Opt {
     #[command(subcommand)]
     pub cmd: Option<Cmd>,
 
-    #[arg(long)]
-    pub size: Option<String>,
+    #[arg(long, global = true, value_enum)]
+    pub size: Option<Resolution>,
 
     #[arg(long)]
     pub ext: Option<String>,
@@ -107,6 +107,119 @@ pub enum Cmd {
     },
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Resolution {
+    #[default]
+    Uhd,
+    Resolution(u16, u16),
+}
+
+impl Resolution {
+    const ALL: &[Self] = &[
+        Self::Uhd,
+        Self::Resolution(1920, 1200),
+        Self::Resolution(1920, 1080),
+        Self::Resolution(1366, 768),
+        Self::Resolution(1280, 768),
+        Self::Resolution(1024, 768),
+        Self::Resolution(800, 600),
+        Self::Resolution(800, 480),
+        Self::Resolution(768, 1280),
+        Self::Resolution(720, 1280),
+        Self::Resolution(640, 480),
+        Self::Resolution(480, 800),
+        Self::Resolution(400, 240),
+        Self::Resolution(320, 240),
+        Self::Resolution(240, 320),
+    ];
+}
+
+impl clap::ValueEnum for Resolution {
+    fn value_variants<'a>() -> &'a [Self] {
+        Self::ALL
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        Some(clap::builder::PossibleValue::new(self.to_string()))
+    }
+}
+
+impl std::str::FromStr for Resolution {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "UHD" {
+            Ok(Self::Uhd)
+        } else {
+            let (width, height) = s
+                .split_once('x')
+                .ok_or_else(|| anyhow::anyhow!("Invalid resolution"))?;
+            let resolution = Self::Resolution(width.parse()?, height.parse()?);
+            if !Self::ALL.contains(&resolution) {
+                eprintln!("Warning: unknown resolution");
+            }
+            Ok(resolution)
+        }
+    }
+}
+
+impl std::fmt::Display for Resolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Uhd => write!(f, "UHD"),
+            Self::Resolution(w, h) => write!(f, "{w}x{h}"),
+        }
+    }
+}
+
+mod resolution_serde {
+    use clap::ValueEnum;
+
+    use super::Resolution;
+
+    struct ResolutionVisitor;
+
+    impl<'de> serde::Deserialize<'de> for Resolution {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer.deserialize_string(ResolutionVisitor)
+        }
+    }
+
+    impl<'de> serde::de::Visitor<'de> for ResolutionVisitor {
+        type Value = Resolution;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a string matching one of the resolution values")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            v.parse().map_err(serde::de::Error::custom)
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(&v)
+        }
+    }
+
+    impl serde::Serialize for Resolution {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(self.to_possible_value().unwrap().get_name())
+        }
+    }
+}
+
 #[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq)]
 pub enum ResetItem {
     /// Remove downloaded images
@@ -156,5 +269,49 @@ mod tests {
     #[test]
     fn check_arg_sanity() {
         Opt::command().debug_assert();
+    }
+
+    fn get_expected_resolutions() -> Vec<&'static str> {
+        vec![
+            "UHD",
+            "1920x1200",
+            "1920x1080",
+            "1366x768",
+            "1280x768",
+            "1024x768",
+            "800x600",
+            "800x480",
+            "768x1280",
+            "720x1280",
+            "640x480",
+            "480x800",
+            "400x240",
+            "320x240",
+            "240x320",
+        ]
+    }
+
+    #[test]
+    fn check_resolution_values_clap() {
+        let expected = get_expected_resolutions();
+
+        let actual = Resolution::ALL
+            .iter()
+            .map(|x| x.to_possible_value().unwrap().get_name().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn check_resolution_values_display() {
+        let expected = get_expected_resolutions();
+
+        let actual = Resolution::ALL
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect::<Vec<_>>();
+
+        assert_eq!(expected, actual);
     }
 }

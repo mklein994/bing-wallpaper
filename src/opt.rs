@@ -59,17 +59,21 @@ pub enum Cmd {
     },
 
     ShowCurrent {
+        /// Read only from the downloaded state file; don't update if missing
         #[arg(long)]
         frozen: bool,
     },
 
     Reset {
-        #[arg(short)]
+        /// Which directories to remove
+        #[arg(short, long, value_enum, value_delimiter = ',', conflicts_with = "all")]
         items: Vec<ResetItem>,
 
+        /// Don't remove anything, just show what would be removed
         #[arg(short = 'n', long, visible_alias = "pretend")]
         dry_run: bool,
 
+        /// Reset everything (default if -i is not passed)
         #[arg(long)]
         all: bool,
     },

@@ -64,13 +64,8 @@ pub enum Cmd {
     },
 
     Reset {
-        /// Remove downloaded images
-        #[arg(long)]
-        images: bool,
-
-        /// Reset local state
-        #[arg(long)]
-        state: bool,
+        #[arg(short)]
+        items: Vec<ResetItem>,
 
         #[arg(short = 'n', long, visible_alias = "pretend")]
         dry_run: bool,
@@ -78,6 +73,15 @@ pub enum Cmd {
         #[arg(long)]
         all: bool,
     },
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq)]
+pub enum ResetItem {
+    /// Remove downloaded images
+    Images,
+
+    /// Reset local state
+    State,
 }
 
 #[derive(Debug, ValueEnum, Clone, Copy)]

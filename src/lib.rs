@@ -34,11 +34,10 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
             Cmd::Update => commands::update_images(&config).await?,
             Cmd::ShowCurrent { frozen } => commands::show_current(&config, frozen)?,
             Cmd::Reset {
-                images,
-                state,
-                dry_run,
                 all,
-            } => commands::reset(&config, all, images, dry_run, state)?,
+                dry_run,
+                items,
+            } => commands::reset(&config, all, dry_run, &items)?,
         }
     } else {
         let mut state = get_local_state(&config)?;

@@ -1,6 +1,7 @@
-use crate::opt::ImagePart;
-use crate::Config;
-use crate::ImageData;
+use crate::{
+    opt::{ImagePart, ResetItem},
+    Config, ImageData,
+};
 
 use reqwest::Client;
 
@@ -103,14 +104,8 @@ pub fn show_current(config: &Config, frozen: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn reset(
-    config: &Config,
-    all: bool,
-    images: bool,
-    dry_run: bool,
-    state: bool,
-) -> anyhow::Result<()> {
-    if all || images {
+pub fn reset(config: &Config, all: bool, dry_run: bool, items: &[ResetItem]) -> anyhow::Result<()> {
+    if all || items.contains(&ResetItem::Images) {
         let dir = &config.project.data_dir;
         if dry_run {
             let count = if dir.try_exists()? {
@@ -130,7 +125,7 @@ pub fn reset(
         }
     }
 
-    if all || state {
+    if all || items.contains(&ResetItem::State) {
         if dry_run {
             eprintln!(
                 "[DRY RUN]: Removing {:?}...",

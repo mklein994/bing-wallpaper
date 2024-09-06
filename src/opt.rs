@@ -50,14 +50,18 @@ pub enum Cmd {
     Update,
 
     /// Make an HTTP call to the metadata URL
-    Metadata {
+    State {
         /// Just print the URL that would be called to get metadata
         #[arg(short, long)]
-        print: bool,
+        url: bool,
 
         /// Return the real JSON (not trimmed) that is returned from the HTTP call
         #[arg(short, long)]
         raw: bool,
+
+        /// Print only from the local state file; don't update
+        #[arg(long)]
+        frozen: bool,
     },
 
     /// Print the resolved project directories

@@ -28,7 +28,7 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
 
     if let Some(cmd) = opt.cmd {
         match cmd {
-            Cmd::Metadata { print, raw } => commands::print_metadata(&config, print, raw).await?,
+            Cmd::State { url, raw, frozen } => commands::print_state(&config, url, raw, frozen).await?,
             Cmd::ProjectDirs => commands::print_project_dirs(&config)?,
             Cmd::ListImages {
                 ref format,

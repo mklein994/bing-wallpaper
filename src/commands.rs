@@ -72,25 +72,36 @@ pub fn list_images(
     Ok(())
 }
 
-pub async fn print_metadata(config: &Config, print: bool, raw: bool) -> anyhow::Result<()> {
-    let url = config.to_url();
-    if print {
-        println!("{url}");
-    } else {
-        macro_rules! fetch_and_format_json {
-            ($kind:ty) => {{
-                let value = reqwest::get(url).await?.json::<$kind>().await?;
-                Ok::<String, anyhow::Error>(serde_json::to_string_pretty(&value)?)
-            }};
-        }
-
-        let contents = if raw {
-            fetch_and_format_json!(serde_json::Value)?
-        } else {
-            fetch_and_format_json!(ImageData)?
-        };
-
+pub async fn print_state(
+    config: &Config,
+    show_url: bool,
+    raw: bool,
+    frozen: bool,
+) -> anyhow::Result<()> {
+    if frozen {
+        let state = super::get_local_state(config)?;
+        let contents = serde_json::to_string_pretty(&state)?;
         println!("{contents}");
+    } else {
+        let url = config.to_url();
+        if show_url {
+            println!("{url}");
+        } else {
+            macro_rules! fetch_and_format_json {
+                ($kind:ty) => {{
+                    let value = reqwest::get(url).await?.json::<$kind>().await?;
+                    Ok::<String, anyhow::Error>(serde_json::to_string_pretty(&value)?)
+                }};
+            }
+
+            let contents = if raw {
+                fetch_and_format_json!(serde_json::Value)?
+            } else {
+                fetch_and_format_json!(ImageData)?
+            };
+
+            println!("{contents}");
+        }
     }
 
     Ok(())

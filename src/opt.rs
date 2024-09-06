@@ -36,7 +36,7 @@ impl Opt {
         clap_complete::generate(
             shell,
             &mut Self::command(),
-            env!("CARGO_CRATE_NAME"),
+            option_env!("CARGO_BIN_NAME").unwrap_or(env!("CARGO_PKG_NAME")),
             &mut std::io::stdout(),
         );
     }

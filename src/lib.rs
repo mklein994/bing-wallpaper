@@ -38,7 +38,10 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 dry_run,
                 items,
             } => commands::reset(&config, all, dry_run, &items)?,
+            Cmd::Completion { shell } => Opt::print_completion(shell),
         }
+    } else if let Some(shell) = opt.completion {
+        Opt::print_completion(shell);
     } else {
         let mut state = get_local_state(&config)?;
         let image_path = update_random_image(&mut state, &config)?;

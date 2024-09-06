@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use clap_complete::Shell;
 
 use std::path::PathBuf;
 
@@ -24,6 +25,21 @@ pub struct Opt {
 
     #[arg(long)]
     pub ext: Option<String>,
+
+    #[arg(long)]
+    pub completion: Option<Shell>,
+}
+
+impl Opt {
+    pub fn print_completion(shell: Shell) {
+        use clap::CommandFactory;
+        clap_complete::generate(
+            shell,
+            &mut Self::command(),
+            env!("CARGO_CRATE_NAME"),
+            &mut std::io::stdout(),
+        );
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -76,6 +92,11 @@ pub enum Cmd {
         /// Reset everything (default if -i is not passed)
         #[arg(long)]
         all: bool,
+    },
+
+    Completion {
+        #[arg(short, long)]
+        shell: Shell,
     },
 }
 

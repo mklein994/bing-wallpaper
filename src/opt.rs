@@ -25,7 +25,7 @@ pub struct Opt {
     #[arg(long, global = true, value_enum)]
     pub size: Option<Resolution>,
 
-    #[arg(long)]
+    #[arg(long, global = true, value_enum)]
     pub ext: Option<Extension>,
 
     #[arg(long)]

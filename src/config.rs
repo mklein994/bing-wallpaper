@@ -4,14 +4,17 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
 
-use crate::{opt::Resolution, Opt};
+use crate::{
+    opt::{Extension, Resolution},
+    Opt,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     params: UrlParams,
     pub project: Project,
     pub size: Resolution,
-    pub ext: String,
+    pub ext: Extension,
 }
 
 impl Config {
@@ -50,12 +53,7 @@ impl Config {
             },
             project,
             size: opt.size.or(raw_config.size).unwrap_or_default(),
-            ext: opt
-                .ext
-                .as_deref()
-                .or(raw_config.ext.as_deref())
-                .unwrap_or("jpg")
-                .to_string(),
+            ext: opt.ext.or(raw_config.ext).unwrap_or_default(),
         })
     }
 
@@ -103,7 +101,7 @@ pub struct Raw {
     pub index: Option<u8>,
     pub market: Option<String>,
     pub size: Option<Resolution>,
-    pub ext: Option<String>,
+    pub ext: Option<Extension>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq, Clone)]
@@ -156,8 +154,8 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
-            size: Resolution::Uhd,
-            ext: "jpg".to_string(),
+            size: Resolution::default(),
+            ext: Extension::default(),
         };
 
         let actual = Config::initialize_with_project(&Opt::parse_from([""]), project).unwrap();
@@ -179,8 +177,8 @@ mod tests {
                 market: Some("en-CA".to_string()),
             },
             project: project.clone(),
-            size: Resolution::Uhd,
-            ext: "jpg".to_string(),
+            size: Resolution::default(),
+            ext: Extension::default(),
         };
 
         let actual = Config::initialize_with_project(

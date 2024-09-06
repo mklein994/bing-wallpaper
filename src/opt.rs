@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+use serde::{Deserialize, Serialize};
 
 use std::path::PathBuf;
 
@@ -25,7 +26,7 @@ pub struct Opt {
     pub size: Option<Resolution>,
 
     #[arg(long)]
-    pub ext: Option<String>,
+    pub ext: Option<Extension>,
 
     #[arg(long)]
     pub completion: Option<Shell>,
@@ -172,9 +173,33 @@ impl std::fmt::Display for Resolution {
     }
 }
 
-mod resolution_serde {
-    use clap::ValueEnum;
+#[derive(Debug, Default, ValueEnum, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[value(rename_all = "lowercase")]
+pub enum Extension {
+    #[default]
+    Jpg,
+    Webp,
+}
 
+impl std::str::FromStr for Extension {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "jpg" => Ok(Self::Jpg),
+            "webp" => Ok(Self::Webp),
+            _ => anyhow::bail!("Invalid extension"),
+        }
+    }
+}
+
+impl std::fmt::Display for Extension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_possible_value().unwrap().get_name().fmt(f)
+    }
+}
+
+mod resolution_serde {
     use super::Resolution;
 
     struct ResolutionVisitor;
@@ -215,7 +240,7 @@ mod resolution_serde {
         where
             S: serde::Serializer,
         {
-            serializer.serialize_str(self.to_possible_value().unwrap().get_name())
+            serializer.serialize_str(&self.to_string())
         }
     }
 }

@@ -229,7 +229,7 @@ impl Image {
     pub fn to_url(&self, config: &Config) -> Url {
         Url::parse(&format!(
             "{URL_BASE}{}_{}.{}",
-            self.url_base, config.size, &config.ext
+            self.url_base, config.size, config.ext
         ))
         .unwrap()
     }

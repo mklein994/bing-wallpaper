@@ -191,7 +191,8 @@ impl std::fmt::Display for Resolution {
 }
 
 #[derive(Debug, Default, ValueEnum, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
-#[value(rename_all = "lowercase")]
+#[value(rename_all = "lower")]
+#[serde(rename_all = "lowercase")]
 pub enum Extension {
     #[default]
     Jpg,

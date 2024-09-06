@@ -1,8 +1,9 @@
 use crate::{
-    opt::{ImagePart, ResetItem},
+    opt::{ImagePart, RelativeFlag, ResetItem},
     Config, ImageData,
 };
 
+use jiff::Zoned;
 use reqwest::Client;
 
 pub fn print_project_dirs(config: &Config) -> Result<(), anyhow::Error> {
@@ -11,7 +12,21 @@ pub fn print_project_dirs(config: &Config) -> Result<(), anyhow::Error> {
     println!("{contents}");
     Ok(())
 }
-pub fn list_images(config: &Config, format: &[ImagePart], all: bool) -> anyhow::Result<()> {
+pub fn list_images(
+    config: &Config,
+    format: &[ImagePart],
+    all: bool,
+    date: Option<&str>,
+    relative: Option<RelativeFlag>,
+) -> anyhow::Result<()> {
+    let now = Zoned::now();
+    let date_format = |datetime: &Zoned| -> anyhow::Result<String> {
+        match date {
+            Some(f) => Ok(jiff::fmt::strtime::format(f, datetime)?.to_string()),
+            None => Ok(datetime.to_string()),
+        }
+    };
+
     let state = super::get_local_state(config)?;
     if state.image_data.images.is_empty() {
         anyhow::bail!("No images found. Try running with the \"update\" subcommand.");
@@ -34,7 +49,20 @@ pub fn list_images(config: &Config, format: &[ImagePart], all: bool) -> anyhow::
                 }
                 ImagePart::Title => line.push(image.title.clone()),
                 ImagePart::Url => line.push(image.to_url(config).to_string()),
-                ImagePart::Time => line.push(image.full_start_date.to_string()),
+                ImagePart::Time => {
+                    if let Some(relative) = relative {
+                        line.push(super::to_relative(&image.full_start_date, &now, relative)?);
+                    } else {
+                        line.push(date_format(&image.full_start_date)?);
+                    }
+                }
+                ImagePart::Current => line.push(
+                    state
+                        .current_image
+                        .as_ref()
+                        .is_some_and(|x| x == &image.file_name(config))
+                        .to_string(),
+                ),
             }
         }
 

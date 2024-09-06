@@ -69,6 +69,12 @@ pub enum Cmd {
         #[arg(short, long, value_enum, value_delimiter = ',', num_args(1..), conflicts_with = "all")]
         format: Vec<ImagePart>,
 
+        #[arg(short, long, default_value = None)]
+        date: Option<String>,
+
+        #[arg(short, long, conflicts_with = "date", value_enum)]
+        relative: Option<Option<RelativeFlag>>,
+
         /// Print all columns (default if -f is not passed)
         #[arg(long)]
         all: bool,
@@ -109,19 +115,21 @@ pub enum ResetItem {
     State,
 }
 
-#[derive(Debug, ValueEnum, Clone, Copy)]
+#[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq)]
 pub enum ImagePart {
     Path,
     FullPath,
     Title,
     Url,
     Time,
+    Current,
 }
 
 impl ImagePart {
     #[must_use]
     pub fn all() -> Vec<Self> {
         vec![
+            Self::Current,
             Self::Time,
             Self::FullPath,
             Self::Path,
@@ -129,6 +137,14 @@ impl ImagePart {
             Self::Url,
         ]
     }
+}
+
+#[derive(Debug, Default, ValueEnum, PartialEq, Eq, Clone, Copy)]
+pub enum RelativeFlag {
+    #[default]
+    Long,
+    Raw,
+    Short,
 }
 
 #[cfg(test)]

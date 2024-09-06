@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
 
 use anyhow::anyhow;
-use jiff::Zoned;
+use jiff::{SpanRound, Unit, Zoned};
 use rand::prelude::*;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -18,8 +18,8 @@ pub use config::Config;
 use config::Project;
 #[cfg(doc)]
 pub use config::Raw as RawConfig;
-use opt::Cmd;
 pub use opt::Opt;
+use opt::{Cmd, RelativeFlag};
 
 const URL_BASE: &str = "https://www.bing.com";
 
@@ -30,7 +30,18 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
         match cmd {
             Cmd::Metadata { print, raw } => commands::print_metadata(&config, print, raw).await?,
             Cmd::ProjectDirs => commands::print_project_dirs(&config)?,
-            Cmd::ListImages { ref format, all } => commands::list_images(&config, format, all)?,
+            Cmd::ListImages {
+                ref format,
+                all,
+                date,
+                relative,
+            } => commands::list_images(
+                &config,
+                format,
+                all,
+                date.as_deref(),
+                relative.map(Option::unwrap_or_default),
+            )?,
             Cmd::Update => commands::update_images(&config).await?,
             Cmd::ShowCurrent { frozen } => commands::show_current(&config, frozen)?,
             Cmd::Reset {
@@ -248,6 +259,43 @@ impl std::hash::Hash for Image {
         self.copyright.hash(state);
         self.copyright_link.hash(state);
     }
+}
+
+fn to_relative(start: &Zoned, end: &Zoned, flag: RelativeFlag) -> anyhow::Result<String> {
+    let diff = start
+        .until(end)?
+        .round(SpanRound::new().largest(Unit::Year).relative(end))?;
+
+    if let RelativeFlag::Raw = flag {
+        return Ok(diff.to_string());
+    }
+
+    let mut fmt = vec![];
+    macro_rules! fmt {
+        ($var:ident, $short:literal, $single:literal, $plural:literal, $get:expr) => {
+            let $var = $get;
+            if $var > 0 {
+                fmt.push(if let RelativeFlag::Short = flag {
+                    format!("{}{}", $var, $short)
+                } else {
+                    format!("{} {}", $var, if $var == 1 { $single } else { $plural })
+                });
+            }
+        };
+    }
+
+    fmt!(year, "y", "year", "years", diff.get_years());
+    fmt!(month, "mo", "month", "months", diff.get_months());
+    fmt!(day, "d", "day", "days", diff.get_days());
+    fmt!(hour, "h", "hour", "hours", diff.get_hours());
+    fmt!(minute, "m", "minute", "minutes", diff.get_minutes());
+    fmt!(second, "s", "second", "seconds", diff.get_seconds());
+
+    if fmt.is_empty() {
+        fmt.push("now".to_string());
+    }
+
+    Ok(fmt.join(", "))
 }
 
 #[cfg(test)]

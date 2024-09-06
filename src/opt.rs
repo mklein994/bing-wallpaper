@@ -74,6 +74,9 @@ pub enum Cmd {
 
         #[arg(short = 'n', long, visible_alias = "pretend")]
         dry_run: bool,
+
+        #[arg(long)]
+        all: bool,
     },
 }
 

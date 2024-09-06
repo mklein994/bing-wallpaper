@@ -1,3 +1,4 @@
+mod commands;
 pub mod config;
 mod jiff_serde;
 pub mod opt;
@@ -17,8 +18,8 @@ pub use config::Config;
 use config::Project;
 #[cfg(doc)]
 pub use config::Raw as RawConfig;
+use opt::Cmd;
 pub use opt::Opt;
-use opt::{Cmd, ImagePart};
 
 const URL_BASE: &str = "https://www.bing.com";
 
@@ -27,152 +28,21 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
 
     if let Some(cmd) = opt.cmd {
         match cmd {
-            Cmd::Metadata { print, raw } => {
-                let url = config.to_url();
-                if print {
-                    println!("{url}");
-                } else {
-                    macro_rules! fetch_and_format_json {
-                        ($kind:ty) => {{
-                            let value = reqwest::get(url).await?.json::<$kind>().await?;
-                            Ok::<String, anyhow::Error>(serde_json::to_string_pretty(&value)?)
-                        }};
-                    }
-
-                    let contents = if raw {
-                        fetch_and_format_json!(serde_json::Value)?
-                    } else {
-                        fetch_and_format_json!(ImageData)?
-                    };
-
-                    println!("{contents}");
-                }
-            }
-
-            Cmd::ProjectDirs => {
-                let value = &config.project;
-                let contents = serde_json::to_string_pretty(&value)?;
-                println!("{contents}");
-            }
-
-            Cmd::ListImages { ref format, all } => {
-                let state = get_local_state(&config)?;
-                if state.image_data.images.is_empty() {
-                    anyhow::bail!("No images found. Try running with the \"update\" subcommand.");
-                }
-
-                for image in state.image_data.images {
-                    let mut line: Vec<String> = vec![];
-                    let order = if all || format.is_empty() {
-                        &ImagePart::all()
-                    } else {
-                        format
-                    };
-                    for item in order {
-                        match item {
-                            ImagePart::Path => {
-                                line.push(image.file_name(&config).display().to_string());
-                            }
-                            ImagePart::FullPath => {
-                                line.push(image.absolute_file_name(&config).display().to_string());
-                            }
-                            ImagePart::Title => line.push(image.title.clone()),
-                            ImagePart::Url => line.push(image.to_url(&config).to_string()),
-                            ImagePart::Time => line.push(image.full_start_date.to_string()),
-                        }
-                    }
-
-                    println!("{}", line.join("\t"));
-                }
-            }
-
-            Cmd::Update => {
-                ensure_project_dirs_exist(&config.project)?;
-
-                let mut state = get_local_state(&config)?;
-
-                let client = Client::new();
-
-                let new_state = get_new_state(&config, &client).await?;
-
-                for image in new_state.images {
-                    let image_path = config
-                        .project
-                        .data_dir
-                        .join(image.absolute_file_name(&config));
-                    if !image_path.try_exists()? {
-                        download_image(&config, &client, &image).await?;
-                    }
-
-                    if !state.image_data.images.contains(&image) {
-                        eprintln!("adding image {:?}...", image.title);
-                        state.image_data.add_image(image);
-                    }
-                }
-
-                let _ = update_random_image(&config, &mut state)?;
-
-                let contents = serde_json::to_string_pretty(&state)?;
-                std::fs::write(&config.project.state_file_path, contents)?;
-            }
-
-            Cmd::ShowCurrent { frozen } => {
-                let mut state = get_local_state(&config)?;
-                let image_path = if let Some(image) = state.current_image {
-                    Some(image)
-                } else if !frozen {
-                    Some(update_random_image(&config, &mut state)?)
-                } else {
-                    None
-                };
-
-                if let Some(path) = image_path {
-                    println!("{}", config.project.data_dir.join(path).display());
-                } else {
-                    anyhow::bail!("No current image set");
-                }
-            }
-
+            Cmd::Metadata { print, raw } => commands::print_metadata(&config, print, raw).await?,
+            Cmd::ProjectDirs => commands::print_project_dirs(&config)?,
+            Cmd::ListImages { ref format, all } => commands::list_images(&config, format, all)?,
+            Cmd::Update => commands::update_images(&config).await?,
+            Cmd::ShowCurrent { frozen } => commands::show_current(&config, frozen)?,
             Cmd::Reset {
                 images,
                 state,
                 dry_run,
-            } => {
-                if images {
-                    let dir = config.project.data_dir;
-                    if dry_run {
-                        let count = if dir.try_exists()? {
-                            Some(dir.read_dir()?.count())
-                        } else {
-                            None
-                        };
-
-                        let count_str = match count {
-                            Some(1) => " (1 image)",
-                            Some(x) => &format!(" ({x} images)"),
-                            None => "",
-                        };
-                        eprintln!("[DRY RUN]: Removing {:?}{count_str}...", dir.display());
-                    } else {
-                        std::fs::remove_dir_all(dir)?;
-                    }
-                }
-
-                if state {
-                    if dry_run {
-                        eprintln!(
-                            "[DRY RUN]: Removing {:?}...",
-                            config.project.state_file_path.parent().unwrap().display()
-                        );
-                    } else {
-                        std::fs::remove_dir_all(config.project.state_file_path.parent().unwrap())?;
-                    }
-                }
-            }
+                all,
+            } => commands::reset(&config, all, images, dry_run, state)?,
         }
     } else {
         let mut state = get_local_state(&config)?;
-        let image_path = update_random_image(&config, &mut state)?;
+        let image_path = update_random_image(&mut state, &config)?;
         println!("{}", config.project.data_dir.join(image_path).display());
     };
 
@@ -189,15 +59,17 @@ fn get_local_state(config: &Config) -> anyhow::Result<AppState> {
     }
 }
 
-async fn get_new_state(config: &Config, client: &Client) -> anyhow::Result<ImageData> {
+async fn get_new_image_data(config: &Config, client: &Client) -> anyhow::Result<ImageData> {
     Ok(client.get(config.to_url()).send().await?.json().await?)
 }
 
-async fn download_image(config: &Config, client: &Client, image: &Image) -> anyhow::Result<()> {
-    let url = image.to_url(config);
-    let file_name = image.absolute_file_name(config);
+async fn download_image(
+    client: Client,
+    url: Url,
+    absolute_file_name: PathBuf,
+) -> anyhow::Result<()> {
     let contents = client.get(url).send().await?.bytes().await?;
-    if let Some(mut file) = match File::create_new(file_name) {
+    if let Some(mut file) = match File::create_new(absolute_file_name) {
         Ok(file) => Ok(Some(file)),
         Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => Ok(None),
         Err(err) => Err(err),
@@ -205,6 +77,38 @@ async fn download_image(config: &Config, client: &Client, image: &Image) -> anyh
         file.write_all(&contents)?;
     }
 
+    Ok(())
+}
+
+async fn sync_images(
+    current_image_data: &mut ImageData,
+    new_image_data: ImageData,
+    client: Client,
+    config: &Config,
+) -> anyhow::Result<()> {
+    let mut download_handles = vec![];
+    for image in new_image_data.images {
+        let image_path = image.absolute_file_name(config);
+        if !image_path.try_exists()? {
+            download_handles.push(tokio::spawn(download_image(
+                client.clone(),
+                image.to_url(config),
+                image_path,
+            )));
+        }
+
+        if !current_image_data.images.contains(&image) {
+            eprintln!("tracking image {:?}...", image.title);
+            current_image_data.add_image(image);
+        }
+    }
+
+    if !download_handles.is_empty() {
+        futures::future::try_join_all(download_handles)
+            .await?
+            .into_iter()
+            .collect::<Result<(), _>>()?;
+    }
     Ok(())
 }
 
@@ -224,7 +128,7 @@ fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn update_random_image(config: &Config, state: &mut AppState) -> anyhow::Result<PathBuf> {
+fn update_random_image(state: &mut AppState, config: &Config) -> anyhow::Result<PathBuf> {
     let mut rng = rand::thread_rng();
 
     if state.image_data.images.is_empty() {

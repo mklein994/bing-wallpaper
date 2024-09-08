@@ -47,7 +47,10 @@ impl Opt {
 #[derive(Debug, Subcommand)]
 pub enum Cmd {
     /// Update metadata from the Internet, downloading images if necessary
-    Update,
+    Update {
+        #[arg(long)]
+        quiet: bool,
+    },
 
     /// Make an HTTP call to the metadata URL
     State {

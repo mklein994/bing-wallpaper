@@ -8,6 +8,8 @@ use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
 
 use anyhow::anyhow;
+use futures::StreamExt;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget};
 use jiff::{SpanRound, Unit, Zoned};
 use rand::prelude::*;
 use reqwest::Client;
@@ -28,7 +30,9 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
 
     if let Some(cmd) = opt.cmd {
         match cmd {
-            Cmd::State { url, raw, frozen } => commands::print_state(&config, url, raw, frozen).await?,
+            Cmd::State { url, raw, frozen } => {
+                commands::print_state(&config, url, raw, frozen).await?;
+            }
             Cmd::ProjectDirs => commands::print_project_dirs(&config)?,
             Cmd::ListImages {
                 ref format,
@@ -42,7 +46,7 @@ pub async fn run(opt: Opt) -> anyhow::Result<()> {
                 date.as_deref(),
                 relative.map(Option::unwrap_or_default),
             )?,
-            Cmd::Update => commands::update_images(&config).await?,
+            Cmd::Update { quiet } => commands::update_images(&config, quiet).await?,
             Cmd::ShowCurrent { frozen } => commands::show_current(&config, frozen)?,
             Cmd::Reset {
                 all,
@@ -80,15 +84,20 @@ async fn download_image(
     client: Client,
     url: Url,
     absolute_file_name: PathBuf,
+    multi: MultiProgress,
 ) -> anyhow::Result<()> {
-    let contents = client.get(url).send().await?.bytes().await?;
-    if let Some(mut file) = match File::create_new(absolute_file_name) {
-        Ok(file) => Ok(Some(file)),
-        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => Ok(None),
-        Err(err) => Err(err),
-    }? {
-        file.write_all(&contents)?;
+    let mut file = File::create_new(absolute_file_name)?;
+    let response = client.get(url).send().await?;
+    let length = response.content_length().unwrap();
+    let progress = multi.add(ProgressBar::new(length));
+    let mut stream = response.bytes_stream();
+    while let Some(item) = stream.next().await {
+        let bytes = item?;
+        progress.set_position(bytes.len() as u64);
+        file.write_all(&bytes)?;
     }
+
+    progress.finish();
 
     Ok(())
 }
@@ -98,8 +107,13 @@ async fn sync_images(
     new_image_data: ImageData,
     client: Client,
     config: &Config,
+    quiet: bool,
 ) -> anyhow::Result<()> {
     let mut download_handles = vec![];
+    let multi = MultiProgress::new();
+    if quiet {
+        multi.set_draw_target(ProgressDrawTarget::hidden());
+    }
     for image in new_image_data.images {
         let image_path = image.absolute_file_name(config);
         if !image_path.try_exists()? {
@@ -107,6 +121,7 @@ async fn sync_images(
                 client.clone(),
                 image.to_url(config),
                 image_path,
+                multi.clone(),
             )));
         }
 

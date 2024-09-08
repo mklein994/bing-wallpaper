@@ -107,14 +107,14 @@ pub async fn print_state(
     Ok(())
 }
 
-pub async fn update_images(config: &Config) -> anyhow::Result<()> {
+pub async fn update_images(config: &Config, quiet: bool) -> anyhow::Result<()> {
     super::ensure_project_dirs_exist(&config.project)?;
 
     let mut state = super::get_local_state(config)?;
 
     let client = Client::new();
     let new_image_data = super::get_new_image_data(config, &client).await?;
-    super::sync_images(&mut state.image_data, new_image_data, client, config).await?;
+    super::sync_images(&mut state.image_data, new_image_data, client, config, quiet).await?;
 
     let _ = super::update_random_image(&mut state, config)?;
 

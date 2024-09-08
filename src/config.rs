@@ -20,7 +20,7 @@ pub struct Config {
 impl Config {
     /// Merge the config with options passed on the command line
     pub fn initialize(opt: &Opt) -> anyhow::Result<Self> {
-        let project = Project::initialize()?;
+        let project = Project::initialize(opt)?;
         Self::initialize_with_project(opt, project)
     }
 
@@ -113,16 +113,29 @@ pub struct Project {
 
 impl Project {
     /// Try initializing a structure to track project directories
-    fn initialize() -> anyhow::Result<Self> {
+    fn initialize(opt: &Opt) -> anyhow::Result<Self> {
         let project_dirs = ProjectDirs::from("", "", env!("CARGO_CRATE_NAME"))
             .ok_or_else(|| anyhow!("Failed to detect project directories"))?;
+
         Ok(Self {
-            config_file_path: project_dirs.config_dir().join("config.json").clone(),
-            data_dir: project_dirs.data_dir().to_path_buf(),
-            state_file_path: project_dirs
-                .state_dir()
-                .map(|x| x.join("image_index.json"))
-                .ok_or_else(|| anyhow!("Failed to detect project state directory"))?,
+            config_file_path: if let Some(path) = &opt.config_path {
+                path.clone()
+            } else {
+                project_dirs.config_dir().join("config.json")
+            },
+            data_dir: if let Some(path) = &opt.data_path {
+                path.clone()
+            } else {
+                project_dirs.data_dir().to_path_buf()
+            },
+            state_file_path: if let Some(path) = &opt.state_path {
+                path.clone()
+            } else {
+                project_dirs
+                    .state_dir()
+                    .map(|x| x.join("image_index.json"))
+                    .ok_or_else(|| anyhow!("Failed to detect project state directory"))?
+            },
         })
     }
 

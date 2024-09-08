@@ -10,6 +10,12 @@ pub struct Opt {
     #[arg(long, global = true, default_value = None)]
     pub config_path: Option<PathBuf>,
 
+    #[arg(long, global = true)]
+    pub state_path: Option<PathBuf>,
+
+    #[arg(long, global = true)]
+    pub data_path: Option<PathBuf>,
+
     #[arg(long, global = true, default_value = None)]
     pub index: Option<u8>,
 

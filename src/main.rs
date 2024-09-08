@@ -6,5 +6,5 @@ use bing_wallpaper::Opt;
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::parse();
 
-    bing_wallpaper::run(opt).await
+    bing_wallpaper::run(opt, &mut std::io::stdout()).await
 }

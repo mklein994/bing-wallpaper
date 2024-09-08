@@ -18,49 +18,53 @@ use url::Url;
 
 pub use config::Config;
 use config::Project;
-#[cfg(doc)]
 pub use config::Raw as RawConfig;
 pub use opt::Opt;
 use opt::{Cmd, RelativeFlag};
 
 const URL_BASE: &str = "https://www.bing.com";
 
-pub async fn run(opt: Opt) -> anyhow::Result<()> {
+pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<()> {
     let config = Config::initialize(&opt)?;
 
     if let Some(cmd) = opt.cmd {
         match cmd {
             Cmd::State { url, raw, frozen } => {
-                commands::print_state(&config, url, raw, frozen).await?;
+                commands::print_state(writer, &config, url, raw, frozen).await?;
             }
-            Cmd::ProjectDirs => commands::print_project_dirs(&config)?,
+            Cmd::ProjectDirs => commands::print_project_dirs(writer, &config)?,
             Cmd::ListImages {
                 ref format,
                 all,
                 date,
                 relative,
             } => commands::list_images(
+                writer,
                 &config,
                 format,
                 all,
                 date.as_deref(),
                 relative.map(Option::unwrap_or_default),
             )?,
-            Cmd::Update { quiet } => commands::update_images(&config, quiet).await?,
-            Cmd::ShowCurrent { frozen } => commands::show_current(&config, frozen)?,
+            Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
+            Cmd::ShowCurrent { frozen } => commands::show_current(writer, &config, frozen)?,
             Cmd::Reset {
                 all,
                 dry_run,
                 items,
-            } => commands::reset(&config, all, dry_run, &items)?,
-            Cmd::Completion { shell } => Opt::print_completion(shell),
+            } => commands::reset(writer, &config, all, dry_run, &items)?,
+            Cmd::Completion { shell } => Opt::print_completion(writer, shell),
         }
     } else if let Some(shell) = opt.completion {
-        Opt::print_completion(shell);
+        Opt::print_completion(writer, shell);
     } else {
         let mut state = get_local_state(&config)?;
         let image_path = update_random_image(&mut state, &config)?;
-        println!("{}", config.project.data_dir.join(image_path).display());
+        writeln!(
+            writer,
+            "{}",
+            config.project.data_dir.join(image_path).display()
+        )?;
     };
 
     Ok(())
@@ -103,6 +107,7 @@ async fn download_image(
 }
 
 async fn sync_images(
+    writer: &mut impl std::io::Write,
     current_image_data: &mut ImageData,
     new_image_data: ImageData,
     client: Client,
@@ -126,7 +131,7 @@ async fn sync_images(
         }
 
         if !current_image_data.images.contains(&image) {
-            eprintln!("tracking image {:?}...", image.title);
+            writeln!(writer, "tracking image {:?}...", image.title)?;
             current_image_data.add_image(image);
         }
     }

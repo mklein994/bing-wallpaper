@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: stderr
+---
+Error: No images found. Try running with the "update" subcommand.

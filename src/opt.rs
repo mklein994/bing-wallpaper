@@ -39,13 +39,13 @@ pub struct Opt {
 }
 
 impl Opt {
-    pub fn print_completion(shell: Shell) {
+    pub fn print_completion(writer: &mut impl std::io::Write, shell: Shell) {
         use clap::CommandFactory;
         clap_complete::generate(
             shell,
             &mut Self::command(),
             option_env!("CARGO_BIN_NAME").unwrap_or(env!("CARGO_PKG_NAME")),
-            &mut std::io::stdout(),
+            writer,
         );
     }
 }

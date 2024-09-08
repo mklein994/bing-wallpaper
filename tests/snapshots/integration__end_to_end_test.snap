@@ -1,0 +1,9 @@
+---
+source: tests/integration.rs
+expression: "to_contents(buf).replace(env!(\"CARGO_MANIFEST_DIR\"), \"\")"
+---
+{
+  "config_file_path": "/tests/local/config/bing_wallpaper/config.json",
+  "data_dir": "/tests/local/share/bing_wallpaper",
+  "state_file_path": "/tests/local/state/bing_wallpaper/image_index.json"
+}

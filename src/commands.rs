@@ -6,13 +6,17 @@ use crate::{
 use jiff::Zoned;
 use reqwest::Client;
 
-pub fn print_project_dirs(config: &Config) -> Result<(), anyhow::Error> {
+pub fn print_project_dirs(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+) -> Result<(), anyhow::Error> {
     let value = &config.project;
     let contents = serde_json::to_string_pretty(&value)?;
-    println!("{contents}");
+    writeln!(writer, "{contents}")?;
     Ok(())
 }
 pub fn list_images(
+    writer: &mut impl std::io::Write,
     config: &Config,
     format: &[ImagePart],
     all: bool,
@@ -66,13 +70,14 @@ pub fn list_images(
             }
         }
 
-        println!("{}", line.join("\t"));
+        writeln!(writer, "{}", line.join("\t"))?;
     }
 
     Ok(())
 }
 
 pub async fn print_state(
+    writer: &mut impl std::io::Write,
     config: &Config,
     show_url: bool,
     raw: bool,
@@ -81,11 +86,11 @@ pub async fn print_state(
     if frozen {
         let state = super::get_local_state(config)?;
         let contents = serde_json::to_string_pretty(&state)?;
-        println!("{contents}");
+        writeln!(writer, "{contents}")?;
     } else {
         let url = config.to_url();
         if show_url {
-            println!("{url}");
+            writeln!(writer, "{url}")?;
         } else {
             macro_rules! fetch_and_format_json {
                 ($kind:ty) => {{
@@ -100,21 +105,33 @@ pub async fn print_state(
                 fetch_and_format_json!(ImageData)?
             };
 
-            println!("{contents}");
+            writeln!(writer, "{contents}")?;
         }
     }
 
     Ok(())
 }
 
-pub async fn update_images(config: &Config, quiet: bool) -> anyhow::Result<()> {
+pub async fn update_images(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+    quiet: bool,
+) -> anyhow::Result<()> {
     super::ensure_project_dirs_exist(&config.project)?;
 
     let mut state = super::get_local_state(config)?;
 
     let client = Client::new();
     let new_image_data = super::get_new_image_data(config, &client).await?;
-    super::sync_images(&mut state.image_data, new_image_data, client, config, quiet).await?;
+    super::sync_images(
+        writer,
+        &mut state.image_data,
+        new_image_data,
+        client,
+        config,
+        quiet,
+    )
+    .await?;
 
     let _ = super::update_random_image(&mut state, config)?;
 
@@ -124,7 +141,11 @@ pub async fn update_images(config: &Config, quiet: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn show_current(config: &Config, frozen: bool) -> anyhow::Result<()> {
+pub fn show_current(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+    frozen: bool,
+) -> anyhow::Result<()> {
     let mut state = super::get_local_state(config)?;
     let image_path = if let Some(image) = state.current_image {
         Some(image)
@@ -135,7 +156,7 @@ pub fn show_current(config: &Config, frozen: bool) -> anyhow::Result<()> {
     };
 
     if let Some(path) = image_path {
-        println!("{}", config.project.data_dir.join(path).display());
+        writeln!(writer, "{}", config.project.data_dir.join(path).display())?;
     } else {
         anyhow::bail!("No current image set");
     }
@@ -143,7 +164,13 @@ pub fn show_current(config: &Config, frozen: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn reset(config: &Config, all: bool, dry_run: bool, items: &[ResetItem]) -> anyhow::Result<()> {
+pub fn reset(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+    all: bool,
+    dry_run: bool,
+    items: &[ResetItem],
+) -> anyhow::Result<()> {
     if all || items.contains(&ResetItem::Images) {
         let dir = &config.project.data_dir;
         if dry_run {
@@ -158,7 +185,11 @@ pub fn reset(config: &Config, all: bool, dry_run: bool, items: &[ResetItem]) -> 
                 Some(x) => &format!(" ({x} images)"),
                 None => "",
             };
-            eprintln!("[DRY RUN]: Removing {:?}{count_str}...", dir.display());
+            writeln!(
+                writer,
+                "[DRY RUN]: Removing {:?}{count_str}...",
+                dir.display()
+            )?;
         } else {
             std::fs::remove_dir_all(dir)?;
         }
@@ -166,10 +197,11 @@ pub fn reset(config: &Config, all: bool, dry_run: bool, items: &[ResetItem]) -> 
 
     if all || items.contains(&ResetItem::State) {
         if dry_run {
-            eprintln!(
+            writeln!(
+                writer,
                 "[DRY RUN]: Removing {:?}...",
                 config.project.state_file_path.parent().unwrap().display()
-            );
+            )?;
         } else {
             std::fs::remove_dir_all(config.project.state_file_path.parent().unwrap())?;
         }

@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+use jiff::Zoned;
 use serde::{Deserialize, Serialize};
 
 use std::path::PathBuf;
@@ -93,6 +94,9 @@ pub enum Cmd {
         /// Print all columns (default if -f is not passed)
         #[arg(long)]
         all: bool,
+
+        #[arg(long)]
+        now: Option<Zoned>,
     },
 
     ShowCurrent {

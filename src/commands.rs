@@ -22,8 +22,8 @@ pub fn list_images(
     all: bool,
     date: Option<&str>,
     relative: Option<RelativeFlag>,
+    now: Zoned,
 ) -> anyhow::Result<()> {
-    let now = Zoned::now();
     let date_format = |datetime: &Zoned| -> anyhow::Result<String> {
         match date {
             Some(f) => Ok(jiff::fmt::strtime::format(f, datetime)?.to_string()),

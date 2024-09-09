@@ -63,7 +63,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
         Opt::print_completion(writer, shell);
     } else {
         let mut state = get_local_state(&config)?;
-        let image_path = update_random_image(&mut state, &config)?;
+        let image_path = state.update_random_image(&config)?;
         writeln!(
             writer,
             "{}",
@@ -165,40 +165,6 @@ fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn update_random_image(state: &mut AppState, config: &Config) -> anyhow::Result<PathBuf> {
-    let mut rng = rand::thread_rng();
-
-    if state.image_data.images.is_empty() {
-        anyhow::bail!(
-            "Looks like you don't have any images. Try running this with no subcommands."
-        );
-    }
-
-    let images = state
-        .image_data
-        .images
-        .iter()
-        .filter(|x| {
-            if let Some(current) = &state.current_image {
-                x.file_name(config) != *current
-            } else {
-                true
-            }
-        })
-        .enumerate()
-        .collect::<Vec<_>>();
-
-    let image_path = images
-        .choose_weighted(&mut rng, |(index, _)| index + 1)
-        .map(|(_, image)| image)?
-        .file_name(config);
-
-    state.current_image = Some(image_path.clone());
-    state.save(config)?;
-
-    Ok(image_path)
-}
-
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct AppState {
     image_data: ImageData,
@@ -211,6 +177,40 @@ impl AppState {
         let contents = serde_json::to_string_pretty(self)?;
         std::fs::write(config_path, contents)?;
         Ok(())
+    }
+
+    pub fn update_random_image(&mut self, config: &Config) -> anyhow::Result<PathBuf> {
+        let mut rng = rand::thread_rng();
+
+        if self.image_data.images.is_empty() {
+            anyhow::bail!(
+                "Looks like you don't have any images. Try running this with no subcommands."
+            );
+        }
+
+        let images = self
+            .image_data
+            .images
+            .iter()
+            .filter(|x| {
+                if let Some(current) = &self.current_image {
+                    x.file_name(config) != *current
+                } else {
+                    true
+                }
+            })
+            .enumerate()
+            .collect::<Vec<_>>();
+
+        let image_path = images
+            .choose_weighted(&mut rng, |(index, _)| index + 1)
+            .map(|(_, image)| image)?
+            .file_name(config);
+
+        self.current_image = Some(image_path.clone());
+        self.save(config)?;
+
+        Ok(image_path)
     }
 }
 

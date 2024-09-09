@@ -133,7 +133,7 @@ pub async fn update_images(
     )
     .await?;
 
-    let _ = super::update_random_image(&mut state, config)?;
+    let _ = state.update_random_image(config)?;
 
     let contents = serde_json::to_string_pretty(&state)?;
     std::fs::write(&config.project.state_file_path, contents)?;
@@ -153,7 +153,7 @@ pub fn show(
             if let Some(image) = state.current_image {
                 Some(image)
             } else if !frozen {
-                Some(super::update_random_image(&mut state, config)?)
+                Some(state.update_random_image(config)?)
             } else {
                 None
             }

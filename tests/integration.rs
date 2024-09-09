@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 macro_rules! project_file {
     ($base:literal, $dir:literal) => {
         concat!(
@@ -46,11 +48,13 @@ where
     (stdout, stderr)
 }
 
+static PATH_FILTER: LazyLock<String> = LazyLock::new(|| regex::escape(env!("CARGO_MANIFEST_DIR")));
+
 macro_rules! t {
     ($project:expr, $args:expr) => {
         let (stdout, stderr) = get_output($project, $args);
         insta::with_settings!({filters => vec![
-        (env!("CARGO_MANIFEST_DIR"), ""),
+            (&*PATH_FILTER.as_str(), ""),
         ]}, {
             insta::assert_snapshot!(stdout);
             insta::assert_snapshot!(stderr);
@@ -78,5 +82,8 @@ fn end_to_end_test() {
 
 #[test]
 fn list_existing_images() {
-    t!(project!("local-state-has-images"), ["list-images", "-f", "title,path"]);
+    t!(
+        project!("local-state-has-images"),
+        ["list-images", "-f", "title,path"]
+    );
 }

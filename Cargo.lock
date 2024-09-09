@@ -127,6 +127,7 @@ dependencies = [
  "insta",
  "jiff",
  "rand",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use jiff::Zoned;
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,10 @@ pub enum Cmd {
         now: Option<Zoned>,
     },
 
-    ShowCurrent {
+    Show {
+        #[clap(flatten)]
+        kind: ShowKindArg,
+
         /// Read only from the downloaded state file; don't update if missing
         #[arg(long)]
         frozen: bool,
@@ -123,6 +126,34 @@ pub enum Cmd {
         #[arg(short, long)]
         shell: Shell,
     },
+}
+
+#[derive(Debug, Args, Clone, Copy)]
+#[group(multiple = false)]
+pub struct ShowKindArg {
+    #[arg(long)]
+    current: bool,
+
+    #[arg(long)]
+    latest: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ShowKind {
+    Current,
+    Latest,
+}
+
+impl From<ShowKindArg> for ShowKind {
+    fn from(value: ShowKindArg) -> Self {
+        if value.current {
+            Self::Current
+        } else if value.latest {
+            Self::Latest
+        } else {
+            unreachable!("Unknown ShowKindArg");
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

@@ -1,5 +1,5 @@
 use crate::{
-    opt::{ImagePart, RelativeFlag, ResetItem},
+    opt::{ImagePart, RelativeFlag, ResetItem, ShowKind},
     Config, ImageData,
 };
 
@@ -141,18 +141,29 @@ pub async fn update_images(
     Ok(())
 }
 
-pub fn show_current(
+pub fn show(
     writer: &mut impl std::io::Write,
     config: &Config,
+    kind: ShowKind,
     frozen: bool,
 ) -> anyhow::Result<()> {
     let mut state = super::get_local_state(config)?;
-    let image_path = if let Some(image) = state.current_image {
-        Some(image)
-    } else if !frozen {
-        Some(super::update_random_image(&mut state, config)?)
-    } else {
-        None
+    let image_path = match kind {
+        ShowKind::Current => {
+            if let Some(image) = state.current_image {
+                Some(image)
+            } else if !frozen {
+                Some(super::update_random_image(&mut state, config)?)
+            } else {
+                None
+            }
+        }
+        ShowKind::Latest => state
+            .image_data
+            .images
+            .iter()
+            .max_by_key(|x| &x.full_start_date)
+            .map(|x| x.file_name(config)),
     };
 
     if let Some(path) = image_path {

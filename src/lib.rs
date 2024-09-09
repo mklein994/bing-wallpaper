@@ -20,7 +20,7 @@ pub use config::Config;
 use config::Project;
 pub use config::Raw as RawConfig;
 pub use opt::Opt;
-use opt::{Cmd, RelativeFlag};
+use opt::{Cmd, RelativeFlag, ShowKind};
 
 const URL_BASE: &str = "https://www.bing.com";
 
@@ -49,7 +49,9 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 &now.unwrap_or_else(Zoned::now),
             )?,
             Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
-            Cmd::ShowCurrent { frozen } => commands::show_current(writer, &config, frozen)?,
+            Cmd::Show { kind, frozen } => {
+                commands::show(writer, &config, ShowKind::from(kind), frozen)?;
+            }
             Cmd::Reset {
                 all,
                 dry_run,

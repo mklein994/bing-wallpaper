@@ -1,36 +1,41 @@
-macro_rules! project {
-    ($dir:literal) => {
+macro_rules! project_file {
+    ($base:literal, $dir:literal) => {
         concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/local/",
+            "/tests/",
+            $base,
+            "/",
             $dir,
             "/bing_wallpaper"
         )
     };
 
-    ($dir:literal, $file:literal) => {
-        concat!(project!($dir), "/", $file)
+    ($base:literal, $dir:literal, $file:literal) => {
+        concat!(project_file!($base, $dir), "/", $file)
     };
 }
 
-const OPT_ARGS: &[&str] = &[
-    "--config-path",
-    project!("config", "config.json"),
-    "--data-path",
-    project!("share"),
-    "--state-path",
-    project!("state", "image_index.json"),
-];
+macro_rules! project {
+    ($base:literal) => {
+        &[
+            "--config-path", project_file!($base, "config", "config.json"),
+            "--data-path", project_file!($base, "share"),
+            "--state-path", project_file!($base, "state", "image_index.json"),
+        ]
+    }
+}
 
-fn get_output<I, S>(args: I) -> (String, String)
+fn get_output<I, V, S, T>(project: I, args: V) -> (String, String)
 where
     I: IntoIterator<Item = S>,
+    V: IntoIterator<Item = T>,
     S: AsRef<std::ffi::OsStr>,
+    T: AsRef<std::ffi::OsStr>,
 {
     use std::process::Command;
 
     let output = Command::new(env!("CARGO_BIN_EXE_bing-wallpaper"))
-        .args(OPT_ARGS)
+        .args(project)
         .args(args)
         .output()
         .unwrap();
@@ -41,20 +46,37 @@ where
     (stdout, stderr)
 }
 
+macro_rules! t {
+    ($project:expr, $args:expr) => {
+        let (stdout, stderr) = get_output($project, $args);
+        insta::with_settings!({filters => vec![
+        (env!("CARGO_MANIFEST_DIR"), ""),
+        ]}, {
+            insta::assert_snapshot!(stdout);
+            insta::assert_snapshot!(stderr);
+        });
+    }
+}
+
 #[test]
 fn list_images() {
-    let (stdout, stderr) = get_output(["list-images"]);
+    let (stdout, stderr) = get_output(project!("local"), ["list-images"]);
     insta::assert_snapshot!(stdout);
     insta::assert_snapshot!(stderr);
 }
 
 #[test]
 fn end_to_end_test() {
-    let (stdout, stderr) = get_output(["project-dirs"]);
+    let (stdout, stderr) = get_output(project!("local"), ["project-dirs"]);
     insta::with_settings!({filters => vec![
     (env!("CARGO_MANIFEST_DIR"), ""),
     ]}, {
         insta::assert_snapshot!(stdout);
         insta::assert_snapshot!(stderr);
     });
+}
+
+#[test]
+fn list_existing_images() {
+    t!(project!("local-state-has-images"), ["list-images", "-f", "title,path"]);
 }

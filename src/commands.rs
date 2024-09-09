@@ -22,7 +22,7 @@ pub fn list_images(
     all: bool,
     date: Option<&str>,
     relative: Option<RelativeFlag>,
-    now: Zoned,
+    now: &Zoned,
 ) -> anyhow::Result<()> {
     let date_format = |datetime: &Zoned| -> anyhow::Result<String> {
         match date {
@@ -55,7 +55,7 @@ pub fn list_images(
                 ImagePart::Url => line.push(image.to_url(config).to_string()),
                 ImagePart::Time => {
                     if let Some(relative) = relative {
-                        line.push(super::to_relative(&image.full_start_date, &now, relative)?);
+                        line.push(super::to_relative(&image.full_start_date, now, relative)?);
                     } else {
                         line.push(date_format(&image.full_start_date)?);
                     }

@@ -46,7 +46,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 all,
                 date.as_deref(),
                 relative.map(Option::unwrap_or_default),
-                now.unwrap_or_else(Zoned::now),
+                &now.unwrap_or_else(Zoned::now),
             )?,
             Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
             Cmd::ShowCurrent { frozen } => commands::show_current(writer, &config, frozen)?,

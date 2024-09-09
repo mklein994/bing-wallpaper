@@ -20,11 +20,14 @@ macro_rules! project_file {
 macro_rules! project {
     ($base:literal) => {
         &[
-            "--config-path", project_file!($base, "config", "config.json"),
-            "--data-path", project_file!($base, "share"),
-            "--state-path", project_file!($base, "state", "image_index.json"),
+            "--config-path",
+            project_file!($base, "config", "config.json"),
+            "--data-path",
+            project_file!($base, "share"),
+            "--state-path",
+            project_file!($base, "state", "image_index.json"),
         ]
-    }
+    };
 }
 
 fn get_output<I, V, S, T>(project: I, args: V) -> (String, String)

@@ -49,8 +49,8 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 &now.unwrap_or_else(Zoned::now),
             )?,
             Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
-            Cmd::Show { kind, frozen } => {
-                commands::show(writer, &config, ShowKind::from(kind), frozen)?;
+            Cmd::Show { kind, update } => {
+                commands::show(writer, &config, ShowKind::from((kind, update)))?;
             }
             Cmd::Reset {
                 all,
@@ -63,7 +63,9 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
         Opt::print_completion(writer, shell);
     } else {
         let mut state = get_local_state(&config)?;
-        let image_path = state.update_random_image(&config)?;
+        let image_path = &state.get_random_image(&config)?;
+        state.current_image = Some(image_path.clone());
+        state.save(&config)?;
         writeln!(
             writer,
             "{}",
@@ -179,7 +181,7 @@ impl AppState {
         Ok(())
     }
 
-    pub fn update_random_image(&mut self, config: &Config) -> anyhow::Result<PathBuf> {
+    pub fn get_random_image(&self, config: &Config) -> anyhow::Result<PathBuf> {
         let mut rng = rand::thread_rng();
 
         if self.image_data.images.is_empty() {
@@ -206,9 +208,6 @@ impl AppState {
             .choose_weighted(&mut rng, |(index, _)| index + 1)
             .map(|(_, image)| image)?
             .file_name(config);
-
-        self.current_image = Some(image_path.clone());
-        self.save(config)?;
 
         Ok(image_path)
     }

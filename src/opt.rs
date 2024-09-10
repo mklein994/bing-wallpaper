@@ -103,9 +103,8 @@ pub enum Cmd {
         #[clap(flatten)]
         kind: ShowKindArg,
 
-        /// Read only from the downloaded state file; don't update if missing
         #[arg(long)]
-        frozen: bool,
+        update: bool,
     },
 
     Reset {
@@ -135,21 +134,28 @@ pub struct ShowKindArg {
     current: bool,
 
     #[arg(long)]
+    random: bool,
+
+    #[arg(long)]
     latest: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum ShowKind {
     Current,
+    Random { update: bool },
     Latest,
 }
 
-impl From<ShowKindArg> for ShowKind {
-    fn from(value: ShowKindArg) -> Self {
-        if value.current {
+impl From<(ShowKindArg, bool)> for ShowKind {
+    fn from(value: (ShowKindArg, bool)) -> Self {
+        let (kind, update) = value;
+        if kind.current {
             Self::Current
-        } else if value.latest {
+        } else if kind.latest {
             Self::Latest
+        } else if kind.random {
+            Self::Random { update }
         } else {
             unreachable!("Unknown ShowKindArg");
         }

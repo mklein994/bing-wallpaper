@@ -133,7 +133,7 @@ pub async fn update_images(
     )
     .await?;
 
-    let _ = state.update_random_image(config)?;
+    let _ = state.get_random_image(config)?;
 
     let contents = serde_json::to_string_pretty(&state)?;
     std::fs::write(&config.project.state_file_path, contents)?;
@@ -145,17 +145,18 @@ pub fn show(
     writer: &mut impl std::io::Write,
     config: &Config,
     kind: ShowKind,
-    frozen: bool,
 ) -> anyhow::Result<()> {
     let mut state = super::get_local_state(config)?;
     let image_path = match kind {
-        ShowKind::Current => {
-            if let Some(image) = state.current_image {
-                Some(image)
-            } else if !frozen {
-                Some(state.update_random_image(config)?)
+        ShowKind::Current => state.current_image,
+        ShowKind::Random { update } => {
+            let random = state.get_random_image(config)?;
+            if update {
+                state.current_image = Some(random);
+                state.save(config)?;
+                state.current_image
             } else {
-                None
+                Some(random)
             }
         }
         ShowKind::Latest => state

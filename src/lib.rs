@@ -117,7 +117,7 @@ async fn download_image(
 async fn sync_images(
     writer: &mut impl std::io::Write,
     current_image_data: &mut ImageData,
-    new_image_data: ImageData,
+    new_image_data: &mut ImageData,
     client: Client,
     config: &Config,
     quiet: bool,
@@ -127,7 +127,14 @@ async fn sync_images(
     if quiet {
         multi.set_draw_target(ProgressDrawTarget::hidden());
     }
-    for image in new_image_data.images {
+
+    current_image_data
+        .images
+        .difference(&new_image_data.images)
+        .try_for_each(|image| writeln!(writer, "tracking image {:?}...", image.title))?;
+
+    current_image_data.images.append(&mut new_image_data.images);
+    for image in &current_image_data.images {
         let image_path = image.absolute_file_name(config);
         if !image_path.try_exists()? {
             download_handles.push(tokio::spawn(download_image(
@@ -136,11 +143,6 @@ async fn sync_images(
                 image_path,
                 multi.clone(),
             )));
-        }
-
-        if !current_image_data.images.contains(&image) {
-            writeln!(writer, "tracking image {:?}...", image.title)?;
-            current_image_data.add_image(image);
         }
     }
 
@@ -218,12 +220,6 @@ impl AppState {
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct ImageData {
     images: BTreeSet<Image>,
-}
-
-impl ImageData {
-    pub fn add_image(&mut self, image: Image) {
-        self.images.insert(image);
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Clone)]

@@ -128,11 +128,11 @@ pub async fn update_images(
     let mut state = super::get_local_state(config)?;
 
     let client = Client::new();
-    let new_image_data = super::get_new_image_data(config, &client).await?;
+    let mut new_image_data = super::get_new_image_data(config, &client).await?;
     super::sync_images(
         writer,
         &mut state.image_data,
-        new_image_data,
+        &mut new_image_data,
         client,
         config,
         quiet,

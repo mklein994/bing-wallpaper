@@ -8,6 +8,8 @@ use crate::{
     opt::{Extension, Resolution},
     Opt,
 };
+#[cfg(test)]
+pub use tests::get_test_project;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
@@ -138,16 +140,6 @@ impl Project {
             },
         })
     }
-
-    #[cfg(test)]
-    #[must_use]
-    pub fn new(config_file_path: PathBuf, data_dir: PathBuf, state_file_path: PathBuf) -> Self {
-        Self {
-            config_file_path,
-            data_dir,
-            state_file_path,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -155,7 +147,22 @@ mod tests {
     use clap::Parser;
 
     use super::*;
-    use crate::tests::get_test_project;
+
+    #[must_use]
+    pub fn get_test_project() -> Project {
+        let test_base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/local"));
+        Project {
+            config_file_path: test_base
+                .join("config")
+                .join(env!("CARGO_CRATE_NAME"))
+                .join("config.json"),
+            data_dir: test_base.join("share").join(env!("CARGO_CRATE_NAME")),
+            state_file_path: test_base
+                .join("state")
+                .join(env!("CARGO_CRATE_NAME"))
+                .join("image_index.json"),
+        }
+    }
 
     #[test]
     fn with_sample_config() {

@@ -333,25 +333,10 @@ fn to_relative(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use crate::config::get_test_project;
 
     #[test]
     fn ensure_test_project_dirs_exist() {
         ensure_project_dirs_exist(&get_test_project()).unwrap();
-    }
-
-    pub fn get_test_project() -> Project {
-        let test_base = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/local"));
-        Project::new(
-            test_base
-                .join("config")
-                .join(env!("CARGO_CRATE_NAME"))
-                .join("config.json"),
-            test_base.join("share").join(env!("CARGO_CRATE_NAME")),
-            test_base
-                .join("state")
-                .join(env!("CARGO_CRATE_NAME"))
-                .join("image_index.json"),
-        )
     }
 }

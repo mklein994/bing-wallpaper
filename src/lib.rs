@@ -135,7 +135,7 @@ async fn sync_images(
 
     current_image_data.images.append(&mut new_image_data.images);
     for image in &current_image_data.images {
-        let image_path = image.absolute_file_name(config);
+        let image_path = config.project.data_dir.join(image.file_name(config));
         if !image_path.try_exists()? {
             download_handles.push(tokio::spawn(download_image(
                 client.clone(),
@@ -252,10 +252,6 @@ impl Image {
             self.url_base, config.size, config.ext
         ))
         .unwrap()
-    }
-
-    pub fn absolute_file_name(&self, config: &Config) -> PathBuf {
-        config.project.data_dir.join(self.file_name(config))
     }
 
     pub fn file_name(&self, config: &Config) -> PathBuf {

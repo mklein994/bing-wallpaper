@@ -50,7 +50,13 @@ pub fn list_images(
                     line.push(image.file_name(config).display().to_string());
                 }
                 ImagePart::FullPath => {
-                    line.push(image.absolute_file_name(config).display().to_string());
+                    let path = config
+                        .project
+                        .data_dir
+                        .join(image.file_name(config))
+                        .display()
+                        .to_string();
+                    line.push(path);
                 }
                 ImagePart::Title => line.push(image.title.clone()),
                 ImagePart::Url => line.push(image.to_url(config).to_string()),

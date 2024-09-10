@@ -139,7 +139,11 @@ pub async fn update_images(
     )
     .await?;
 
-    let _ = state.get_random_image(config)?;
+    let random_image = state.get_random_image(config)?;
+
+    state.current_image = Some(random_image);
+
+    state.save(config)?;
 
     let contents = serde_json::to_string_pretty(&state)?;
     std::fs::write(&config.project.state_file_path, contents)?;

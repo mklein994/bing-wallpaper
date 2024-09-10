@@ -186,8 +186,6 @@ impl AppState {
     }
 
     pub fn get_random_image(&self, config: &Config) -> anyhow::Result<PathBuf> {
-        let mut rng = rand::thread_rng();
-
         if self.image_data.images.is_empty() {
             anyhow::bail!(
                 "Looks like you don't have any images. Try running this with no subcommands."
@@ -198,9 +196,9 @@ impl AppState {
             .image_data
             .images
             .iter()
-            .filter(|x| {
+            .filter(|image| {
                 if let Some(current) = &self.current_image {
-                    x.file_name(config) != *current
+                    image.file_name(config) != *current
                 } else {
                     true
                 }
@@ -208,6 +206,7 @@ impl AppState {
             .enumerate()
             .collect::<Vec<_>>();
 
+        let mut rng = rand::thread_rng();
         let image_path = images
             .choose_weighted(&mut rng, |(index, _)| index + 1)
             .map(|(_, image)| image)?

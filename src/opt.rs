@@ -91,6 +91,9 @@ pub enum Cmd {
         #[arg(short, long, conflicts_with = "date", value_enum)]
         relative: Option<Option<RelativeFlag>>,
 
+        #[arg(long)]
+        approx: bool,
+
         /// Print all columns (default if -f is not passed)
         #[arg(long)]
         all: bool,

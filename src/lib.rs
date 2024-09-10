@@ -39,6 +39,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 date,
                 relative,
                 now,
+                approx,
             } => commands::list_images(
                 writer,
                 &config,
@@ -46,6 +47,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 all,
                 date.as_deref(),
                 relative.map(Option::unwrap_or_default),
+                approx,
                 &now.unwrap_or_else(Zoned::now),
             )?,
             Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
@@ -286,10 +288,20 @@ impl std::hash::Hash for Image {
     }
 }
 
-fn to_relative(start: &Zoned, end: &Zoned, flag: RelativeFlag) -> anyhow::Result<String> {
-    let diff = start
-        .until(end)?
-        .round(SpanRound::new().largest(Unit::Year).relative(end))?;
+fn to_relative(
+    start: &Zoned,
+    end: &Zoned,
+    flag: RelativeFlag,
+    approx: bool,
+) -> anyhow::Result<String> {
+    let round = SpanRound::new().largest(Unit::Year).relative(end);
+    let round = if approx {
+        round.smallest(Unit::Day)
+    } else {
+        round
+    };
+
+    let diff = start.until(end)?.round(round)?;
 
     if let RelativeFlag::Raw = flag {
         return Ok(diff.to_string());
@@ -317,7 +329,11 @@ fn to_relative(start: &Zoned, end: &Zoned, flag: RelativeFlag) -> anyhow::Result
     fmt!(second, "s", "second", "seconds", diff.get_seconds());
 
     if fmt.is_empty() {
-        fmt.push("now".to_string());
+        if approx {
+            fmt.push("today".to_string());
+        } else {
+            fmt.push("now".to_string());
+        }
     }
 
     Ok(fmt.join(", "))

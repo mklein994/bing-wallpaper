@@ -131,7 +131,7 @@ async fn sync_images(
     current_image_data
         .images
         .difference(&new_image_data.images)
-        .try_for_each(|image| writeln!(writer, "tracking image {:?}...", image.title))?;
+        .try_for_each(|image| writeln!(writer, "Tracking image {:?}...", image.title))?;
 
     current_image_data.images.append(&mut new_image_data.images);
     for image in &current_image_data.images {

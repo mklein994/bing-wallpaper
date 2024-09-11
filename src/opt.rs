@@ -35,7 +35,7 @@ pub struct Opt {
     #[arg(long, global = true, value_enum)]
     pub ext: Option<Extension>,
 
-    #[arg(long)]
+    #[arg(long, exclusive = true)]
     pub completion: Option<Shell>,
 }
 

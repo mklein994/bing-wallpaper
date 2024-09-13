@@ -3,7 +3,9 @@ use clap_complete::Shell;
 use jiff::Zoned;
 use serde::{Deserialize, Serialize};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use crate::{config::Project, Config, RawConfig};
 
 #[derive(Debug, Parser)]
 #[command(version, flatten_help = true)]
@@ -40,6 +42,41 @@ pub struct Opt {
 }
 
 impl Opt {
+    pub fn get_config(&self) -> anyhow::Result<Config> {
+        let project = self.get_project()?;
+        let raw_config = self.get_raw_config(&project)?;
+        Ok(Config::new(self, project, raw_config))
+    }
+
+    pub fn get_config_with_project(&self, project: Project) -> anyhow::Result<Config> {
+        let raw_config = self.get_raw_config(&project)?;
+        Ok(Config::new(self, project, raw_config))
+    }
+
+    pub fn get_project(&self) -> anyhow::Result<Project> {
+        Project::initialize(self)
+    }
+
+    pub fn get_raw_config(&self, project: &Project) -> anyhow::Result<RawConfig> {
+        let raw_config = if let Some(path) = self.get_config_file(project) {
+            RawConfig::from_file(path)?
+        } else {
+            RawConfig::default()
+        };
+
+        Ok(raw_config)
+    }
+
+    fn get_config_file<'a>(&'a self, project: &'a Project) -> Option<&'a Path> {
+        self.config_path.as_deref().or_else(|| {
+            let default_config_path = project.config_file_path.as_path();
+            default_config_path
+                .try_exists()
+                .is_ok_and(|x| x)
+                .then_some(default_config_path)
+        })
+    }
+
     pub fn print_completion(writer: &mut impl std::io::Write, shell: Shell) {
         use clap::CommandFactory;
         clap_complete::generate(
@@ -72,6 +109,12 @@ pub enum Cmd {
         /// Print only from the local state file; don't update
         #[arg(long)]
         frozen: bool,
+    },
+
+    /// Show the configuration
+    Config {
+        #[command(flatten)]
+        args: ShowConfigArgs,
     },
 
     /// Print the resolved project directories
@@ -131,6 +174,25 @@ pub enum Cmd {
         #[arg(short, long)]
         shell: Shell,
     },
+}
+
+#[derive(Debug, Args, Clone, Copy)]
+pub struct ShowConfigArgs {
+    #[arg(short, default_value_t, long, value_enum)]
+    pub kind: ShowConfigKind,
+
+    #[arg(short, long)]
+    pub compact: bool,
+
+    #[arg(short, long)]
+    pub path: bool,
+}
+
+#[derive(Debug, Default, ValueEnum, Clone, Copy)]
+pub enum ShowConfigKind {
+    Raw,
+    #[default]
+    Resolved,
 }
 
 #[derive(Debug, Args, Clone, Copy)]

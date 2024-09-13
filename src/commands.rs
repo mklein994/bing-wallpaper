@@ -1,6 +1,6 @@
 use crate::{
-    opt::{ImagePart, RelativeFlag, ResetItem, ShowKind},
-    Config, ImageData,
+    opt::{ImagePart, RelativeFlag, ResetItem, ShowConfigArgs, ShowConfigKind, ShowKind},
+    Config, ImageData, RawConfig,
 };
 
 use jiff::Zoned;
@@ -251,6 +251,36 @@ pub fn reset(
             )?;
         } else {
             std::fs::remove_dir_all(config.project.state_file_path.parent().unwrap())?;
+        }
+    }
+
+    Ok(())
+}
+
+pub fn show_config(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+    args: ShowConfigArgs,
+) -> anyhow::Result<()> {
+    if args.path {
+        writeln!(writer, "{}", config.project.config_file_path.display())?;
+    } else {
+        let raw = match args.kind {
+            ShowConfigKind::Raw => &config.raw,
+            ShowConfigKind::Resolved => &RawConfig {
+                index: config.index(),
+                market: config.market(),
+                number: Some(config.number()),
+                size: Some(config.size),
+                ext: Some(config.ext),
+            },
+        };
+
+        if args.compact {
+            serde_json::to_writer(&mut *writer, raw)?;
+        } else {
+            serde_json::to_writer_pretty(&mut *writer, raw)?;
+            writeln!(writer)?;
         }
     }
 

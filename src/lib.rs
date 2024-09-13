@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub use config::Config;
-use config::Project;
 pub use config::Raw as RawConfig;
 pub use opt::Opt;
 use opt::{Cmd, ImagePart, RelativeFlag, ShowKind};
@@ -26,7 +25,7 @@ use opt::{Cmd, ImagePart, RelativeFlag, ShowKind};
 const URL_BASE: &str = "https://www.bing.com";
 
 pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<()> {
-    let config = Config::initialize(&opt)?;
+    let config = opt.get_config()?;
 
     if let Some(cmd) = opt.cmd {
         match cmd {
@@ -34,6 +33,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 commands::print_state(writer, &config, url, raw, frozen).await?;
             }
             Cmd::ProjectDirs => commands::print_project_dirs(writer, &config)?,
+            Cmd::Config { args } => commands::show_config(writer, &config, args)?,
             Cmd::ListImages {
                 format,
                 all,
@@ -168,7 +168,7 @@ async fn sync_images(
     Ok(())
 }
 
-fn ensure_project_dirs_exist(project: &Project) -> anyhow::Result<()> {
+fn ensure_project_dirs_exist(project: &config::Project) -> anyhow::Result<()> {
     if !project.data_dir.try_exists()? {
         std::fs::create_dir(&project.data_dir)?;
     }

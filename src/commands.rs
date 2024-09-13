@@ -15,23 +15,46 @@ pub fn print_project_dirs(
     writeln!(writer, "{contents}")?;
     Ok(())
 }
+
+pub enum TimeFormatKind {
+    Date(Option<String>),
+    Relative {
+        now: Zoned,
+        kind: RelativeFlag,
+        approx: bool,
+    },
+}
+
+struct TimeFormat<'a> {
+    date: &'a Zoned,
+    kind: &'a TimeFormatKind,
+}
+
+impl<'a> std::fmt::Display for TimeFormat<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            TimeFormatKind::Date(Some(ref format)) => jiff::fmt::strtime::format(format, self.date)
+                .unwrap()
+                .fmt(f),
+            TimeFormatKind::Date(None) => self.date.fmt(f),
+            TimeFormatKind::Relative {
+                ref now,
+                kind,
+                approx,
+            } => super::to_relative(self.date, now, *kind, *approx)
+                .unwrap()
+                .fmt(f),
+        }
+    }
+}
+
 pub fn list_images(
     writer: &mut impl std::io::Write,
     config: &Config,
     format: &[ImagePart],
     all: bool,
-    date: Option<&str>,
-    relative: Option<RelativeFlag>,
-    approx: bool,
-    now: &Zoned,
+    time_format: &Option<TimeFormatKind>,
 ) -> anyhow::Result<()> {
-    let date_format = |datetime: &Zoned| -> anyhow::Result<String> {
-        match date {
-            Some(f) => Ok(jiff::fmt::strtime::format(f, datetime)?.to_string()),
-            None => Ok(datetime.to_string()),
-        }
-    };
-
     let state = super::get_local_state(config)?;
     if state.image_data.images.is_empty() {
         anyhow::bail!("No images found. Try running with the \"update\" subcommand.");
@@ -61,16 +84,11 @@ pub fn list_images(
                 ImagePart::Title => line.push(image.title.clone()),
                 ImagePart::Url => line.push(image.to_url(config).to_string()),
                 ImagePart::Time => {
-                    if let Some(relative) = relative {
-                        line.push(super::to_relative(
-                            &image.full_start_date,
-                            now,
-                            relative,
-                            approx,
-                        )?);
-                    } else {
-                        line.push(date_format(&image.full_start_date)?);
-                    }
+                    let time = TimeFormat {
+                        date: &image.full_start_date,
+                        kind: time_format.as_ref().unwrap(),
+                    };
+                    line.push(time.to_string());
                 }
                 ImagePart::Current => line.push(
                     state
@@ -79,6 +97,7 @@ pub fn list_images(
                         .is_some_and(|x| x == &image.file_name(config))
                         .to_string(),
                 ),
+                ImagePart::Copyright => line.push(image.copyright.to_string()),
             }
         }
 

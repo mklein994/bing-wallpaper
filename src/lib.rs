@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
 
 use anyhow::anyhow;
+use commands::TimeFormatKind;
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget};
 use jiff::{SpanRound, Unit, Zoned};
@@ -20,7 +21,7 @@ pub use config::Config;
 use config::Project;
 pub use config::Raw as RawConfig;
 pub use opt::Opt;
-use opt::{Cmd, RelativeFlag, ShowKind};
+use opt::{Cmd, ImagePart, RelativeFlag, ShowKind};
 
 const URL_BASE: &str = "https://www.bing.com";
 
@@ -34,22 +35,42 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
             }
             Cmd::ProjectDirs => commands::print_project_dirs(writer, &config)?,
             Cmd::ListImages {
-                ref format,
+                format,
                 all,
                 date,
                 relative,
                 now,
                 approx,
-            } => commands::list_images(
-                writer,
-                &config,
-                format,
-                all,
-                date.as_deref(),
-                relative.map(Option::unwrap_or_default),
-                approx,
-                &now.unwrap_or_else(Zoned::now),
-            )?,
+                short,
+            } => {
+                let format = if format.is_empty() {
+                    if short {
+                        vec![ImagePart::Time, ImagePart::Title]
+                    } else {
+                        ImagePart::all()
+                    }
+                } else if all {
+                    ImagePart::all()
+                } else {
+                    format
+                };
+
+                let time_format: Option<TimeFormatKind> = if format.contains(&ImagePart::Time) {
+                    if let Some(relative_format) = relative {
+                        Some(TimeFormatKind::Relative {
+                            now: now.unwrap_or_else(Zoned::now),
+                            kind: relative_format.unwrap_or_default(),
+                            approx,
+                        })
+                    } else {
+                        Some(TimeFormatKind::Date(date))
+                    }
+                } else {
+                    None
+                };
+
+                commands::list_images(writer, &config, &format, all, &time_format)?;
+            }
             Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
             Cmd::Show { kind, update } => {
                 commands::show(writer, &config, ShowKind::from((kind, update)))?;
@@ -64,15 +85,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
     } else if let Some(shell) = opt.completion {
         Opt::print_completion(writer, shell);
     } else {
-        let mut state = get_local_state(&config)?;
-        let image_path = &state.get_random_image(&config)?;
-        state.current_image = Some(image_path.clone());
-        state.save(&config)?;
-        writeln!(
-            writer,
-            "{}",
-            config.project.data_dir.join(image_path).display()
-        )?;
+        commands::show(writer, &config, ShowKind::Random { update: true })?;
     };
 
     Ok(())

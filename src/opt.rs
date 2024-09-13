@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
-#[command(version)]
+#[command(version, flatten_help = true)]
 pub struct Opt {
     #[arg(long, global = true, default_value = None)]
     pub config_path: Option<PathBuf>,
@@ -100,6 +100,9 @@ pub enum Cmd {
 
         #[arg(long)]
         now: Option<Zoned>,
+
+        #[arg(long)]
+        short: bool,
     },
 
     Show {
@@ -320,6 +323,7 @@ pub enum ImagePart {
     Url,
     Time,
     Current,
+    Copyright,
 }
 
 impl ImagePart {
@@ -332,6 +336,7 @@ impl ImagePart {
             Self::Path,
             Self::Title,
             Self::Url,
+            Self::Copyright,
         ]
     }
 }

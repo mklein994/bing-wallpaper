@@ -141,9 +141,9 @@ async fn sync_images(
         multi.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    current_image_data
+    new_image_data
         .images
-        .difference(&new_image_data.images)
+        .difference(&current_image_data.images)
         .try_for_each(|image| writeln!(writer, "Tracking image {:?}...", image.title))?;
 
     current_image_data.images.append(&mut new_image_data.images);

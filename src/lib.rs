@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::{collections::BTreeSet, fs::File};
 
 use anyhow::anyhow;
-use commands::TimeFormatKind;
+use commands::{ImageFilterKind, TimeFormatKind};
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget};
 use jiff::{SpanRound, Unit, Zoned};
@@ -42,6 +42,8 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 now,
                 approx,
                 short,
+                missing,
+                untracked,
             } => {
                 let format = if format.is_empty() {
                     if short {
@@ -69,9 +71,19 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                     None
                 };
 
-                commands::list_images(writer, &config, &format, all, &time_format)?;
+                let image_filter = if missing {
+                    Some(ImageFilterKind::Missing)
+                } else if untracked {
+                    Some(ImageFilterKind::Untracked)
+                } else {
+                    None
+                };
+
+                commands::list_images(writer, &config, image_filter, &format, all, &time_format)?;
             }
-            Cmd::Update { quiet } => commands::update_images(writer, &config, quiet).await?,
+            Cmd::Update { quiet } => {
+                commands::update_images(writer, &config, quiet).await?;
+            }
             Cmd::Show { kind, update } => {
                 commands::show(writer, &config, ShowKind::from((kind, update)))?;
             }

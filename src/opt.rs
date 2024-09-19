@@ -146,6 +146,12 @@ pub enum Cmd {
 
         #[arg(long)]
         short: bool,
+
+        #[arg(long)]
+        missing: bool,
+
+        #[arg(long)]
+        untracked: bool,
     },
 
     Show {

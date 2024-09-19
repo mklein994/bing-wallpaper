@@ -1,3 +1,5 @@
+use std::{collections::BTreeSet, path::PathBuf};
+
 use crate::{
     opt::{ImagePart, RelativeFlag, ResetItem, ShowConfigArgs, ShowConfigKind, ShowKind},
     Config, ImageData, RawConfig,
@@ -51,6 +53,7 @@ impl<'a> std::fmt::Display for TimeFormat<'a> {
 pub fn list_images(
     writer: &mut impl std::io::Write,
     config: &Config,
+    image_filter: Option<ImageFilterKind>,
     format: &[ImagePart],
     all: bool,
     time_format: &Option<TimeFormatKind>,
@@ -60,7 +63,47 @@ pub fn list_images(
         anyhow::bail!("No images found. Try running with the \"update\" subcommand.");
     }
 
-    for image in state.image_data.images {
+    if let Some(filter) = image_filter {
+        let local_images = get_local_images(config)?;
+        let tracked_images: BTreeSet<PathBuf> = state
+            .image_data
+            .images
+            .iter()
+            .map(|image| config.project.data_dir.join(image.file_name(config)))
+            .collect();
+
+        if let ImageFilterKind::Untracked = filter {
+            for image in local_images.difference(&tracked_images) {
+                let mut line = vec![];
+                for part in format {
+                    match part {
+                        ImagePart::Path => {
+                            line.push(image.file_name().unwrap().to_str().unwrap().to_string());
+                        }
+                        ImagePart::FullPath => line.push(image.display().to_string()),
+                        _ => {}
+                    }
+                }
+                writeln!(writer, "{}", line.join("\t"))?;
+            }
+        }
+
+        return Ok(());
+    };
+
+    let images = if let Some(ImageFilterKind::Missing) = image_filter {
+        let local_images = get_local_images(config)?;
+        state
+            .image_data
+            .images
+            .into_iter()
+            .filter(|image| !local_images.contains(&image.file_name(config)))
+            .collect()
+    } else {
+        state.image_data.images
+    };
+
+    for image in images {
         let mut line: Vec<String> = vec![];
         let order = if all || format.is_empty() {
             &ImagePart::all()
@@ -105,6 +148,12 @@ pub fn list_images(
     }
 
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+pub enum ImageFilterKind {
+    Missing,
+    Untracked,
 }
 
 pub async fn print_state(
@@ -209,6 +258,12 @@ pub fn show(
     }
 
     Ok(())
+}
+
+fn get_local_images(config: &Config) -> anyhow::Result<BTreeSet<PathBuf>> {
+    std::fs::read_dir(&config.project.data_dir)?
+        .map(|file| file.map(|f| f.path()).map_err(anyhow::Error::from))
+        .collect::<Result<_, _>>()
 }
 
 pub fn reset(

@@ -272,7 +272,8 @@ impl Image {
         url.query_pairs()
             .find_map(|(k, v)| {
                 if k == "id" {
-                    Some(PathBuf::from(format!("{}_{v}", self.hash)))
+                    let date = jiff::fmt::strtime::format("%F", &self.full_start_date).unwrap();
+                    Some(PathBuf::from(format!("{date}_{v}")))
                 } else {
                     None
                 }

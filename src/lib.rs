@@ -79,7 +79,14 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                     None
                 };
 
-                commands::list_images(writer, &config, image_filter, &format, all, &time_format)?;
+                commands::list_images(
+                    writer,
+                    &config,
+                    image_filter,
+                    &format,
+                    all,
+                    time_format.as_ref(),
+                )?;
             }
             Cmd::Update { quiet } => {
                 commands::update_images(writer, &config, quiet).await?;

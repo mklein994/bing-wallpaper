@@ -10,7 +10,7 @@ pub mod datetime {
         d.deserialize_string(Visitor)
     }
 
-    impl<'de> de::Visitor<'de> for Visitor {
+    impl de::Visitor<'_> for Visitor {
         type Value = Zoned;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -51,7 +51,7 @@ pub mod date {
         d.deserialize_string(Visitor)
     }
 
-    impl<'de> de::Visitor<'de> for Visitor {
+    impl de::Visitor<'_> for Visitor {
         type Value = Zoned;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

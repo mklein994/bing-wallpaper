@@ -32,7 +32,7 @@ struct TimeFormat<'a> {
     kind: &'a TimeFormatKind,
 }
 
-impl<'a> std::fmt::Display for TimeFormat<'a> {
+impl std::fmt::Display for TimeFormat<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
             TimeFormatKind::Date(Some(ref format)) => jiff::fmt::strtime::format(format, self.date)
@@ -56,7 +56,7 @@ pub fn list_images(
     image_filter: Option<ImageFilterKind>,
     format: &[ImagePart],
     all: bool,
-    time_format: &Option<TimeFormatKind>,
+    time_format: Option<&TimeFormatKind>,
 ) -> anyhow::Result<()> {
     let state = super::get_local_state(config)?;
     if state.image_data.images.is_empty() {

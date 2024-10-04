@@ -342,7 +342,7 @@ mod resolution_serde {
         }
     }
 
-    impl<'de> serde::de::Visitor<'de> for ResolutionVisitor {
+    impl serde::de::Visitor<'_> for ResolutionVisitor {
         type Value = Resolution;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

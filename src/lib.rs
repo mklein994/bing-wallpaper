@@ -261,7 +261,7 @@ struct Image {
     #[serde(rename = "enddate", with = "jiff_serde::date")]
     end_date: Zoned,
 
-    #[serde(rename = "hsh")]
+    #[serde(rename = "hsh", skip)]
     hash: String,
 
     title: String,
@@ -307,7 +307,6 @@ impl Image {
 
 impl std::hash::Hash for Image {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
         self.title.hash(state);
         self.url.hash(state);
         self.url_base.hash(state);

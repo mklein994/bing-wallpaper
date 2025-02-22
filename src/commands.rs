@@ -35,17 +35,15 @@ struct TimeFormat<'a> {
 impl std::fmt::Display for TimeFormat<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
-            TimeFormatKind::Date(Some(ref format)) => jiff::fmt::strtime::format(format, self.date)
+            TimeFormatKind::Date(Some(format)) => jiff::fmt::strtime::format(format, self.date)
                 .unwrap()
                 .fmt(f),
             TimeFormatKind::Date(None) => self.date.fmt(f),
-            TimeFormatKind::Relative {
-                ref now,
-                kind,
-                approx,
-            } => super::to_relative(self.date, now, *kind, *approx)
-                .unwrap()
-                .fmt(f),
+            TimeFormatKind::Relative { now, kind, approx } => {
+                super::to_relative(self.date, now, *kind, *approx)
+                    .unwrap()
+                    .fmt(f)
+            }
         }
     }
 }
@@ -89,7 +87,7 @@ pub fn list_images(
         }
 
         return Ok(());
-    };
+    }
 
     let images = if let Some(ImageFilterKind::Missing) = image_filter {
         let local_images = get_local_images(config)?;

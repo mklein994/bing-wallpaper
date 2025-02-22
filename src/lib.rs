@@ -105,7 +105,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
         Opt::print_completion(writer, shell);
     } else {
         commands::show(writer, &config, ShowKind::Random { update: true })?;
-    };
+    }
 
     Ok(())
 }

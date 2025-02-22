@@ -86,7 +86,7 @@ impl UrlParams {
         .unwrap()
     }
 
-    fn params(&self) -> impl Iterator<Item = (&'static str, String)> {
+    fn params(&self) -> impl Iterator<Item = (&'static str, String)> + use<> {
         vec![("format", "js".to_string()), ("n", self.number.to_string())]
             .into_iter()
             .chain(

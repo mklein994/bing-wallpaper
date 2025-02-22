@@ -1,5 +1,5 @@
 pub mod datetime {
-    use jiff::{civil::DateTime, tz::TimeZone, Zoned};
+    use jiff::{Zoned, civil::DateTime, tz::TimeZone};
     use serde::{de, ser};
 
     const FORMAT: &str = "%Y%m%d%H%M";
@@ -40,7 +40,7 @@ pub mod datetime {
 }
 
 pub mod date {
-    use jiff::{civil::Date, tz::TimeZone, Zoned};
+    use jiff::{Zoned, civil::Date, tz::TimeZone};
     use serde::{de, ser};
 
     const FORMAT: &str = "%Y%m%d";

@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use url::Url;
 
 use crate::{
-    opt::{Extension, Resolution},
     Opt,
+    opt::{Extension, Resolution},
 };
 #[cfg(test)]
 pub use tests::get_test_project;

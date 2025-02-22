@@ -1,8 +1,8 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
 use crate::{
-    opt::{ImagePart, RelativeFlag, ResetItem, ShowConfigArgs, ShowConfigKind, ShowKind},
     Config, ImageData, RawConfig,
+    opt::{ImagePart, RelativeFlag, ResetItem, ShowConfigArgs, ShowConfigKind, ShowKind},
 };
 
 use jiff::Zoned;

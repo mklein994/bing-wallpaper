@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::path::{Path, PathBuf};
 
-use crate::{config::Project, Config, RawConfig};
+use crate::{Config, RawConfig, config::Project};
 
 #[derive(Debug, Parser)]
 #[command(version, flatten_help = true)]

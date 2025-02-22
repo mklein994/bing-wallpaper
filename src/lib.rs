@@ -238,7 +238,7 @@ impl AppState {
             .enumerate()
             .collect::<Vec<_>>();
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let image_path = images
             .choose_weighted(&mut rng, |(index, _)| index + 1)
             .map(|(_, image)| image)?

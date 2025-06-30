@@ -37,6 +37,9 @@ pub struct Opt {
     #[arg(long, global = true, value_enum)]
     pub ext: Option<Extension>,
 
+    #[arg(long)]
+    pub exclude: Option<Vec<String>>,
+
     #[arg(long, exclusive = true)]
     pub completion: Option<Shell>,
 }

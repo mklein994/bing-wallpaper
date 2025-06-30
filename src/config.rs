@@ -18,6 +18,7 @@ pub struct Config {
     pub project: Project,
     pub size: Resolution,
     pub ext: Extension,
+    pub exclude: Vec<String>,
 }
 
 impl Config {
@@ -33,6 +34,11 @@ impl Config {
 
         let size = opt.size.or(raw_config.size).unwrap_or_default();
         let ext = opt.ext.or(raw_config.ext).unwrap_or_default();
+        let exclude = opt
+            .exclude
+            .clone()
+            .or(raw_config.exclude.clone())
+            .unwrap_or_default();
 
         Self {
             raw: raw_config,
@@ -44,6 +50,7 @@ impl Config {
             project,
             size,
             ext,
+            exclude,
         }
     }
 
@@ -116,6 +123,8 @@ pub struct Raw {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ext: Option<Extension>,
+
+    pub exclude: Option<Vec<String>>,
 }
 
 impl Raw {
@@ -200,6 +209,7 @@ mod tests {
             project: project.clone(),
             size: Resolution::default(),
             ext: Extension::default(),
+            exclude: Vec::default(),
         };
 
         let actual = Opt::parse_from([""])
@@ -229,6 +239,7 @@ mod tests {
             project: project.clone(),
             size: Resolution::default(),
             ext: Extension::default(),
+            exclude: Vec::default(),
         };
 
         let actual = Opt::parse_from(vec!["", "--number", "1", "--index", "1"])

@@ -326,6 +326,7 @@ pub fn show_config(
                 number: Some(config.number()),
                 size: Some(config.size),
                 ext: Some(config.ext),
+                exclude: Some(config.exclude.clone()),
             },
         };
 

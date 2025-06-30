@@ -232,7 +232,7 @@ impl AppState {
                 if let Some(current) = &self.current_image {
                     image.file_name(config) != *current
                 } else {
-                    true
+                    !config.exclude.iter().any(|x| image.url_base.contains(x))
                 }
             })
             .enumerate()

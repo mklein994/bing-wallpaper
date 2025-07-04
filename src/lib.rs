@@ -229,10 +229,14 @@ impl AppState {
             .images
             .iter()
             .filter(|image| {
-                if let Some(current) = &self.current_image {
-                    image.file_name(config) != *current
+                if config.exclude.iter().all(|x| !image.url_base.contains(x)) {
+                    if let Some(current) = &self.current_image {
+                        image.file_name(config) != *current
+                    } else {
+                        true
+                    }
                 } else {
-                    !config.exclude.iter().any(|x| image.url_base.contains(x))
+                    false
                 }
             })
             .enumerate()

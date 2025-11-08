@@ -138,7 +138,7 @@ pub fn list_images(
                         .is_some_and(|x| x == &image.file_name(config))
                         .to_string(),
                 ),
-                ImagePart::Copyright => line.push(image.copyright.to_string()),
+                ImagePart::Copyright => line.push(image.copyright.clone()),
             }
         }
 

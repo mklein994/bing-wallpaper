@@ -417,6 +417,16 @@ fn deduplicate(
     config: &Config,
     dry_run: bool,
 ) -> anyhow::Result<()> {
+    macro_rules! d {
+        ($($args:tt)+) => {
+            if dry_run {
+                writer.write_fmt(format_args!("DRY RUN: {}\n", format_args!($($args)+)))?
+            } else {
+                writer.write_fmt(format_args!("{}\n", format_args!($($args)+)))?
+            }
+        }
+    }
+
     let mut state = get_local_state(config)?;
 
     let mut deduped: BTreeSet<Image> = BTreeSet::new();
@@ -441,31 +451,19 @@ fn deduplicate(
     }
 
     if removed.is_empty() {
-        if dry_run {
-            writeln!(writer, "DRY RUN: No duplicates found.")?;
-        } else {
-            writeln!(writer, "No duplicates found.")?;
-        }
+        d!("No duplicates found.");
         return Ok(());
     }
 
     for image in &removed {
         let path = image.absolute_file_name(config);
-        if dry_run {
-            writeln!(writer, "DRY RUN: Removing duplicate {:?}...", image.title)?;
-        } else {
-            writeln!(writer, "Removing duplicate {:?}...", image.title)?;
-        }
+        d!("Removing duplicate {:?}...", image.title);
         if !dry_run && path.try_exists()? {
             std::fs::remove_file(&path)?;
         }
     }
 
-    if dry_run {
-        writeln!(writer, "DRY RUN: Removed {} duplicate(s).", removed.len())?;
-    } else {
-        writeln!(writer, "Removed {} duplicate(s).", removed.len())?;
-    }
+    d!("Removed {} duplicate(s).", removed.len());
 
     state.image_data.images = deduped;
 
@@ -477,14 +475,7 @@ fn deduplicate(
             .iter()
             .any(|x| &x.file_name(config) == current);
         if !still_present {
-            if dry_run {
-                writeln!(
-                    writer,
-                    "DRY RUN: Current image was a duplicate; clearing selection."
-                )?;
-            } else {
-                writeln!(writer, "Current image was a duplicate; clearing selection.")?;
-            }
+            d!("Current image was a duplicate; clearing selection.");
             state.current_image = None;
         }
     }

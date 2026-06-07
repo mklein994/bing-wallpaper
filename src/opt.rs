@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use crate::{Config, RawConfig, config::Project};
 
 #[derive(Debug, Parser)]
-#[command(version, flatten_help = true)]
+#[command(version)]
 pub struct Opt {
     #[arg(long, global = true, default_value = None)]
     pub config_path: Option<PathBuf>,

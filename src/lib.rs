@@ -99,7 +99,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 dry_run,
                 items,
             } => commands::reset(writer, &config, all, dry_run, &items)?,
-            Cmd::Deduplicate => deduplicate(writer, &config)?,
+            Cmd::Deduplicate { dry_run } => deduplicate(writer, &config, dry_run)?,
             Cmd::Completion { shell } => Opt::print_completion(writer, shell),
         }
     } else if let Some(shell) = opt.completion {
@@ -412,7 +412,11 @@ fn to_relative(
     Ok(fmt.join(", "))
 }
 
-fn deduplicate(writer: &mut impl std::io::Write, config: &Config) -> anyhow::Result<()> {
+fn deduplicate(
+    writer: &mut impl std::io::Write,
+    config: &Config,
+    dry_run: bool,
+) -> anyhow::Result<()> {
     let mut state = get_local_state(config)?;
 
     let mut deduped: BTreeSet<Image> = BTreeSet::new();
@@ -437,19 +441,31 @@ fn deduplicate(writer: &mut impl std::io::Write, config: &Config) -> anyhow::Res
     }
 
     if removed.is_empty() {
-        writeln!(writer, "No duplicates found.")?;
+        if dry_run {
+            writeln!(writer, "DRY RUN: No duplicates found.")?;
+        } else {
+            writeln!(writer, "No duplicates found.")?;
+        }
         return Ok(());
     }
 
     for image in &removed {
         let path = image.absolute_file_name(config);
-        writeln!(writer, "Removing duplicate {:?}...", image.title)?;
-        if path.try_exists()? {
+        if dry_run {
+            writeln!(writer, "DRY RUN: Removing duplicate {:?}...", image.title)?;
+        } else {
+            writeln!(writer, "Removing duplicate {:?}...", image.title)?;
+        }
+        if !dry_run && path.try_exists()? {
             std::fs::remove_file(&path)?;
         }
     }
 
-    writeln!(writer, "Removed {} duplicate(s).", removed.len())?;
+    if dry_run {
+        writeln!(writer, "DRY RUN: Removed {} duplicate(s).", removed.len())?;
+    } else {
+        writeln!(writer, "Removed {} duplicate(s).", removed.len())?;
+    }
 
     state.image_data.images = deduped;
 
@@ -461,12 +477,21 @@ fn deduplicate(writer: &mut impl std::io::Write, config: &Config) -> anyhow::Res
             .iter()
             .any(|x| &x.file_name(config) == current);
         if !still_present {
-            writeln!(writer, "Current image was a duplicate; clearing selection.")?;
+            if dry_run {
+                writeln!(
+                    writer,
+                    "DRY RUN: Current image was a duplicate; clearing selection."
+                )?;
+            } else {
+                writeln!(writer, "Current image was a duplicate; clearing selection.")?;
+            }
             state.current_image = None;
         }
     }
 
-    state.save(config)?;
+    if !dry_run {
+        state.save(config)?;
+    }
 
     Ok(())
 }

@@ -165,7 +165,10 @@ pub enum Cmd {
         update: bool,
     },
 
-    Deduplicate,
+    Deduplicate {
+        #[arg(long)]
+        dry_run: bool,
+    },
 
     Reset {
         /// Which directories to remove

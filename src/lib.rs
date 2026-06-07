@@ -99,6 +99,7 @@ pub async fn run(opt: Opt, writer: &mut impl std::io::Write) -> anyhow::Result<(
                 dry_run,
                 items,
             } => commands::reset(writer, &config, all, dry_run, &items)?,
+            Cmd::Deduplicate => deduplicate(writer, &config)?,
             Cmd::Completion { shell } => Opt::print_completion(writer, shell),
         }
     } else if let Some(shell) = opt.completion {
@@ -409,6 +410,65 @@ fn to_relative(
     }
 
     Ok(fmt.join(", "))
+}
+
+fn deduplicate(writer: &mut impl std::io::Write, config: &Config) -> anyhow::Result<()> {
+    let mut state = get_local_state(config)?;
+
+    let mut deduped: BTreeSet<Image> = BTreeSet::new();
+    let mut removed: Vec<Image> = vec![];
+
+    for image in state.image_data.images {
+        if let Some(existing) = deduped
+            .iter()
+            .find(|x| x.canonical_id() == image.canonical_id())
+            .cloned()
+        {
+            if image > existing {
+                deduped.remove(&existing);
+                removed.push(existing);
+                deduped.insert(image);
+            } else {
+                removed.push(image);
+            }
+        } else {
+            deduped.insert(image);
+        }
+    }
+
+    if removed.is_empty() {
+        writeln!(writer, "No duplicates found.")?;
+        return Ok(());
+    }
+
+    for image in &removed {
+        let path = image.absolute_file_name(config);
+        writeln!(writer, "Removing duplicate {:?}...", image.title)?;
+        if path.try_exists()? {
+            std::fs::remove_file(&path)?;
+        }
+    }
+
+    writeln!(writer, "Removed {} duplicate(s).", removed.len())?;
+
+    state.image_data.images = deduped;
+
+    // Clear current image if it was a duplicate
+    if let Some(ref current) = state.current_image {
+        let still_present = state
+            .image_data
+            .images
+            .iter()
+            .any(|x| &x.file_name(config) == current);
+        if !still_present {
+            writeln!(writer, "Current image was a duplicate; clearing selection.")?;
+            state.current_image = None;
+        }
+    }
+
+    state.save(config)?;
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -165,6 +165,8 @@ pub enum Cmd {
         update: bool,
     },
 
+    Deduplicate,
+
     Reset {
         /// Which directories to remove
         #[arg(short, long, value_enum, value_delimiter = ',', conflicts_with = "all")]

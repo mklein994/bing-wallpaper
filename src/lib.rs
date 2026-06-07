@@ -257,26 +257,51 @@ struct ImageData {
     images: BTreeSet<Image>,
 }
 
+/// An image, as returned by the API
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 struct Image {
+    /// The date time the image entered circulation
+    ///
+    /// e.g. `"202408290400"`
     #[serde(rename = "fullstartdate", with = "jiff_serde::datetime")]
     full_start_date: Zoned,
 
+    /// The date this image will stop being circulated, as per the API
+    ///
+    /// e.g. `"20240830"`
     #[serde(rename = "enddate", with = "jiff_serde::date")]
     end_date: Zoned,
 
+    /// The hash for the image, as returned by the API
+    ///
+    /// Skipped because it hasn't proven to be a reliable way to detect duplicates
     #[serde(rename = "hsh", skip)]
     hash: String,
 
+    /// The title of the image
+    ///
+    /// e.g. `"A Catalan cliffhanger"`
     title: String,
 
+    /// The path to the image, as returned by the API
+    ///
+    /// e.g. `"/th?id=OHR.CastellfollitSpain_EN-CA7493953677_1920x1080.jpg&rf=LaDigue_1920x1080.jpg&pid=hp"`
     url: String,
 
+    /// The base part of the URL path, without image size or other parameters
+    ///
+    /// e.g. `"/th?id=OHR.CastellfollitSpain_EN-CA7493953677"`
     #[serde(rename = "urlbase")]
     url_base: String,
 
+    /// A copyright description for the image
+    ///
+    /// e.g. `"Castellfollit de la Roca, Catalonia, Spain (© Eloi_Omella/Getty Images)"`
     copyright: String,
 
+    /// The URL to the copyright for the image
+    ///
+    /// e.g. `"https://www.bing.com/search?q=Castellfollit+de+la+Roca+Spain&form=hpcapt&filters=HpDate%3a%2220240829_0400%22"`
     #[serde(rename = "copyrightlink")]
     copyright_link: String,
 }

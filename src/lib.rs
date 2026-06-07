@@ -149,7 +149,7 @@ async fn download_image(
 async fn sync_images(
     writer: &mut impl std::io::Write,
     current_image_data: &mut ImageData,
-    new_image_data: &mut ImageData,
+    new_image_data: ImageData,
     client: Client,
     config: &Config,
     quiet: bool,
@@ -165,7 +165,19 @@ async fn sync_images(
         .difference(&current_image_data.images)
         .try_for_each(|image| writeln!(writer, "Tracking image {:?}...", image.title))?;
 
-    current_image_data.images.append(&mut new_image_data.images);
+    for new_image in new_image_data.images {
+        current_image_data.images.retain(|existing_image| {
+            let is_new_duplicate = existing_image != &new_image
+                && existing_image.canonical_id() == new_image.canonical_id();
+            if is_new_duplicate {
+                writeln!(writer, "Replacing image {:?}...", new_image.title)
+                    .expect("Failed to write \"Replacing image\" message");
+            }
+            !is_new_duplicate
+        });
+        current_image_data.images.insert(new_image);
+    }
+
     for image in &current_image_data.images {
         let image_path = image.absolute_file_name(config);
         if !image_path.try_exists()? {
@@ -307,6 +319,10 @@ struct Image {
 }
 
 impl Image {
+    pub fn canonical_id(&self) -> &str {
+        &self.copyright_link
+    }
+
     pub fn to_url(&self, config: &Config) -> Url {
         Url::parse(&format!(
             "{URL_BASE}{}_{}.{}",

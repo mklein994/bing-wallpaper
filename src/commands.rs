@@ -217,9 +217,6 @@ pub async fn update_images(
 
     state.save(config)?;
 
-    let contents = serde_json::to_string_pretty(&state)?;
-    std::fs::write(&config.project.state_file_path, contents)?;
-
     Ok(())
 }
 
